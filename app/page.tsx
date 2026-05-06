@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { AppSidebar } from '@/components/readmap/app-sidebar'
 import { SearchBar } from '@/components/readmap/search-bar'
 import { ProgressBar } from '@/components/readmap/progress-bar'
@@ -40,6 +40,76 @@ type RoadmapLike = Partial<Roadmap> & {
   edges?: APIEdge[]
 }
 
+type PersistedUserData = {
+  roadmaps: Roadmap[]
+  reviews: Review[]
+  activeRoadmapId: string | null
+}
+
+function normalizePersistedUserData(data: PersistedUserData): PersistedUserData {
+  const normalizedReviews = Array.isArray(data.reviews)
+    ? data.reviews.map((review) => ({
+        ...review,
+        createdAt:
+          review.createdAt instanceof Date
+            ? review.createdAt
+            : new Date(review.createdAt as unknown as string),
+      }))
+    : []
+
+  return {
+    roadmaps: Array.isArray(data.roadmaps) ? data.roadmaps : [],
+    reviews: normalizedReviews,
+    activeRoadmapId: data.activeRoadmapId ?? null,
+  }
+}
+
+function getUserDataStorageKey(userId: string) {
+  return `readmap_user_data:${userId}`
+}
+
+function loadUserData(userId: string): PersistedUserData | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(getUserDataStorageKey(userId))
+    if (!raw) return null
+    return normalizePersistedUserData(JSON.parse(raw) as PersistedUserData)
+  } catch {
+    return null
+  }
+}
+
+function saveUserData(userId: string, data: PersistedUserData) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(getUserDataStorageKey(userId), JSON.stringify(data))
+}
+
+async function loadUserDataFromServer(userId: string): Promise<PersistedUserData | null> {
+  try {
+    const response = await fetch(`/api/user-data?userId=${encodeURIComponent(userId)}`, {
+      method: 'GET',
+    })
+    if (response.status === 404) return null
+    if (!response.ok) return null
+    const payload = (await response.json()) as { data?: PersistedUserData }
+    return payload.data ? normalizePersistedUserData(payload.data) : null
+  } catch {
+    return null
+  }
+}
+
+async function saveUserDataToServer(userId: string, data: PersistedUserData): Promise<void> {
+  try {
+    await fetch('/api/user-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, data }),
+    })
+  } catch {
+    // Keep local persistence as fallback if network/db write fails.
+  }
+}
+
 function MainApp() {
   const { user, isLoading } = useAuth()
   const { toast } = useToast()
@@ -55,6 +125,61 @@ function MainApp() {
   const [showAIGenerator, setShowAIGenerator] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [completedBookForShare, setCompletedBookForShare] = useState<Book | null>(null)
+  const [hasLoadedUserData, setHasLoadedUserData] = useState(false)
+
+  useEffect(() => {
+    if (!user) {
+      setHasLoadedUserData(false)
+      return
+    }
+
+    let isCancelled = false
+    const load = async () => {
+      const localPersisted = loadUserData(user.id)
+      const serverPersisted = await loadUserDataFromServer(user.id)
+      const persisted = serverPersisted ?? localPersisted
+
+      if (isCancelled) return
+
+      if (persisted) {
+        const nextRoadmaps = Array.isArray(persisted.roadmaps) && persisted.roadmaps.length > 0
+          ? persisted.roadmaps
+          : initialRoadmaps
+        const nextActiveRoadmapId =
+          persisted.activeRoadmapId && nextRoadmaps.some((r) => r.id === persisted.activeRoadmapId)
+            ? persisted.activeRoadmapId
+            : nextRoadmaps[0]?.id ?? initialRoadmaps[0].id
+
+        setRoadmaps(nextRoadmaps)
+        setReviews(Array.isArray(persisted.reviews) ? persisted.reviews : sampleReviews)
+        setActiveRoadmapId(nextActiveRoadmapId)
+        setSelectedBranch(null)
+      } else {
+        setRoadmaps(initialRoadmaps)
+        setReviews(sampleReviews)
+        setActiveRoadmapId(initialRoadmaps[0].id)
+        setSelectedBranch(null)
+      }
+
+      setHasLoadedUserData(true)
+    }
+
+    load()
+    return () => {
+      isCancelled = true
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!user || !hasLoadedUserData) return
+    const data = {
+      roadmaps,
+      reviews,
+      activeRoadmapId: activeRoadmapId ?? null,
+    }
+    saveUserData(user.id, data)
+    void saveUserDataToServer(user.id, data)
+  }, [user, hasLoadedUserData, roadmaps, reviews, activeRoadmapId])
 
   const activeRoadmap = useMemo(() => 
     roadmaps.find(r => r.id === activeRoadmapId) ?? roadmaps[0],

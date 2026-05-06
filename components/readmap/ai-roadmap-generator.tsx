@@ -345,7 +345,7 @@ export function AIRoadmapGenerator({ onRoadmapGenerated, onClose }: AIRoadmapGen
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm md:items-center md:p-6"
       onClick={onClose}
     >
       <motion.div
@@ -353,7 +353,7 @@ export function AIRoadmapGenerator({ onRoadmapGenerated, onClose }: AIRoadmapGen
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-2xl rounded-2xl border border-border bg-card p-8 shadow-2xl"
+        className="relative my-6 w-full max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-2xl md:p-8"
       >
         {/* Close button */}
         <button
