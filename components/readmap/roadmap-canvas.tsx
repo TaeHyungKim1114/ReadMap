@@ -422,6 +422,7 @@ export function RoadmapCanvas({
     })
 
     const groupSeenByKey = new Map<string, number>()
+    const maxPerColumn = 2
 
     return layoutItems.map(({ book, depth, lane }) => {
       const key = `${depth}|${lane}`
@@ -429,9 +430,14 @@ export function RoadmapCanvas({
       const total = groupTotalByKey.get(key) ?? 1
       groupSeenByKey.set(key, seen + 1)
 
-      // Spread books within the same depth/lane vertically to avoid overlap.
-      const stackOffset = (seen - (total - 1) / 2) * stackGap
-      const x = 40 + depth * depthGap
+      // Keep mindmap-like horizontal expansion:
+      // if one depth/lane has too many nodes, spill into next columns.
+      const columnOffset = Math.floor(seen / maxPerColumn)
+      const rowInColumn = seen % maxPerColumn
+      const remaining = total - columnOffset * maxPerColumn
+      const rowsInThisColumn = Math.max(1, Math.min(maxPerColumn, remaining))
+      const stackOffset = (rowInColumn - (rowsInThisColumn - 1) / 2) * stackGap
+      const x = 40 + (depth + columnOffset) * depthGap
       const y = (trackYById.get(lane) ?? centeredBaseY) + stackOffset
 
       return {
