@@ -376,12 +376,6 @@ export function RoadmapCanvas({
   const displayBooks = (() => {
     const booksCopy = books.map((book) => ({ ...book, position: { ...book.position } }))
     const uniqueTracks = Array.from(new Set(booksCopy.map((book) => book.branch).filter(Boolean))) as string[]
-    if (uniqueTracks.length === 0) {
-      return booksCopy
-        .sort((a, b) => a.position.x - b.position.x)
-        .map((book, index) => ({ ...book, position: { x: 40 + index * 170, y: 100 } }))
-    }
-
     const depthMemo = new Map<string, number>()
     const byId = new Map(booksCopy.map((book) => [book.id, book]))
     const getDepth = (book: Book): number => {
@@ -398,22 +392,47 @@ export function RoadmapCanvas({
     }
 
     const centeredBaseY = 100
-    const trackGap = 90
-    const sortedTracks = uniqueTracks.sort()
+    const depthGap = 180
+    const stackGap = 72
+    const trackGap = 110
+    const laneMain = '__MAIN__'
+    const sortedTracks = uniqueTracks.length > 0 ? uniqueTracks.sort() : [laneMain]
     const centerIndex = (sortedTracks.length - 1) / 2
-    const trackYById = new Map(
+    const trackYById = new Map<string, number>(
       sortedTracks.map((id, index) => [id, centeredBaseY + (index - centerIndex) * trackGap])
     )
 
-    return booksCopy.map((book) => {
+    const layoutItems = booksCopy.map((book) => {
       const depth = getDepth(book)
-      const x = 40 + depth * 180
-      if (!book.branch) {
-        return { ...book, position: { x, y: centeredBaseY } }
+      return {
+        book,
+        depth,
+        lane: book.branch ?? laneMain,
       }
+    })
+
+    const groupTotalByKey = new Map<string, number>()
+    layoutItems.forEach(({ depth, lane }) => {
+      const key = `${depth}|${lane}`
+      groupTotalByKey.set(key, (groupTotalByKey.get(key) ?? 0) + 1)
+    })
+
+    const groupSeenByKey = new Map<string, number>()
+
+    return layoutItems.map(({ book, depth, lane }) => {
+      const key = `${depth}|${lane}`
+      const seen = groupSeenByKey.get(key) ?? 0
+      const total = groupTotalByKey.get(key) ?? 1
+      groupSeenByKey.set(key, seen + 1)
+
+      // Spread books within the same depth/lane vertically to avoid overlap.
+      const stackOffset = (seen - (total - 1) / 2) * stackGap
+      const x = 40 + depth * depthGap
+      const y = (trackYById.get(lane) ?? centeredBaseY) + stackOffset
+
       return {
         ...book,
-        position: { x, y: trackYById.get(book.branch) ?? centeredBaseY },
+        position: { x, y },
       }
     })
   })()
