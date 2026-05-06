@@ -392,10 +392,10 @@ export function RoadmapCanvas({
       return depth
     }
 
-    const centeredBaseY = 100
+    const centeredBaseY = 150
     const depthGap = 180
-    const stackGap = 72
-    const trackGap = 110
+    const stackGap = 120
+    const trackGap = 130
     const laneMain = '__MAIN__'
     const hasMainLane = booksCopy.some((book) => !book.branch)
     const sortedTracks = uniqueTracks.length > 0
