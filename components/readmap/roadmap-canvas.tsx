@@ -396,7 +396,10 @@ export function RoadmapCanvas({
     const stackGap = 72
     const trackGap = 110
     const laneMain = '__MAIN__'
-    const sortedTracks = uniqueTracks.length > 0 ? uniqueTracks.sort() : [laneMain]
+    const hasMainLane = booksCopy.some((book) => !book.branch)
+    const sortedTracks = uniqueTracks.length > 0
+      ? [...(hasMainLane ? [laneMain] : []), ...uniqueTracks.sort()]
+      : [laneMain]
     const centerIndex = (sortedTracks.length - 1) / 2
     const trackYById = new Map<string, number>(
       sortedTracks.map((id, index) => [id, centeredBaseY + (index - centerIndex) * trackGap])
