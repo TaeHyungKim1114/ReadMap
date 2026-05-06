@@ -368,6 +368,9 @@ export function RoadmapCanvas({
   onSave,
   onMarkComplete,
 }: RoadmapCanvasProps) {
+  const nodeWidth = 72
+  const nodeHeight = 104
+  const canvasPadding = 40
   const trackIds = roadmap.branchInfo?.tracks?.map((track) => track.id) ?? []
   const trackColorPalette = ['#3b82f6', '#a855f7', '#14b8a6', '#f59e0b']
   const trackColorById = trackIds.reduce<Map<string, string>>((map, id, index) => {
@@ -447,13 +450,35 @@ export function RoadmapCanvas({
     })
   })()
 
+  const positionedBooks = (() => {
+    if (displayBooks.length === 0) return displayBooks
+
+    const minX = Math.min(...displayBooks.map((book) => book.position.x))
+    const minY = Math.min(...displayBooks.map((book) => book.position.y))
+    const shiftX = minX < canvasPadding ? canvasPadding - minX : 0
+    const shiftY = minY < canvasPadding ? canvasPadding - minY : 0
+
+    return displayBooks.map((book) => ({
+      ...book,
+      position: {
+        x: book.position.x + shiftX,
+        y: book.position.y + shiftY,
+      },
+    }))
+  })()
+
+  const maxBookX = positionedBooks.length > 0 ? Math.max(...positionedBooks.map((book) => book.position.x)) : 0
+  const maxBookY = positionedBooks.length > 0 ? Math.max(...positionedBooks.map((book) => book.position.y)) : 0
+  const canvasWidth = Math.max(900, Math.ceil(maxBookX + nodeWidth + canvasPadding * 3))
+  const canvasHeight = Math.max(380, Math.ceil(maxBookY + nodeHeight + canvasPadding * 3))
+
   const getConnections = () => {
     const connections: { from: Book; to: Book; branch?: string; isCompleted?: boolean }[] = []
     
-    displayBooks.forEach(book => {
+    positionedBooks.forEach(book => {
       if (book.prerequisiteIds) {
         book.prerequisiteIds.forEach(prereqId => {
-          const prereqBook = displayBooks.find(b => b.id === prereqId)
+          const prereqBook = positionedBooks.find(b => b.id === prereqId)
           if (prereqBook) {
             const isCompleted = prereqBook.status === 'completed' && book.status === 'completed'
             connections.push({ from: prereqBook, to: book, branch: book.branch, isCompleted })
@@ -468,12 +493,12 @@ export function RoadmapCanvas({
   const connections = getConnections()
 
   const branchPointBook = roadmap.branchInfo 
-    ? displayBooks.find(b => b.id === roadmap.branchInfo?.branchPoint)
+    ? positionedBooks.find(b => b.id === roadmap.branchInfo?.branchPoint)
     : null
   const showBranchSelector = roadmap.hasBranches && (roadmap.branchInfo?.tracks?.length ?? 0) > 0
 
   // 마지막 책 위치 계산 (추가 버튼용)
-  const lastBook = displayBooks.length > 0 ? displayBooks.reduce((prev, curr) => 
+  const lastBook = positionedBooks.length > 0 ? positionedBooks.reduce((prev, curr) => 
     curr.position.x > prev.position.x ? curr : prev
   ) : null
   const addButtonPosition = lastBook 
@@ -481,7 +506,7 @@ export function RoadmapCanvas({
     : { x: 40, y: 90 }
 
   return (
-    <div className="relative h-[380px] w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border bg-card/50">
+    <div className="relative h-[420px] w-full overflow-auto rounded-xl border border-border bg-card/50">
       {/* Save button for editable mode */}
       {isEditable && onSave && (
         <div className="absolute left-4 top-4 z-10">
@@ -496,7 +521,7 @@ export function RoadmapCanvas({
         </div>
       )}
 
-      <div className="relative h-full min-w-[900px] p-6 pt-28 pb-20">
+      <div className="relative p-6 pt-28 pb-20" style={{ width: canvasWidth, height: canvasHeight }}>
         {/* Branch Selector */}
         {showBranchSelector && !isEditable && (
           <BranchSelector
@@ -507,7 +532,7 @@ export function RoadmapCanvas({
         )}
 
         {/* SVG for connection lines */}
-        <svg className="pointer-events-none absolute inset-0 h-full w-full">
+        <svg className="pointer-events-none absolute inset-0" width={canvasWidth} height={canvasHeight}>
           <defs>
             <linearGradient id="completedGradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#10b981" />
@@ -520,7 +545,7 @@ export function RoadmapCanvas({
               const isInSelectedBranch = !conn.branch || conn.branch === selectedBranch || !selectedBranch
               return (
                 <ConnectionLine
-                  key={`line-${conn.from.id}-${conn.to.id}`}
+                  key={`line-${conn.from.id}-${conn.to.id}-${index}`}
                   from={conn.from.position}
                   to={conn.to.position}
                   status={conn.to.status}
@@ -537,7 +562,7 @@ export function RoadmapCanvas({
 
         {/* Book nodes */}
         <AnimatePresence>
-          {displayBooks.map((book, index) => {
+          {positionedBooks.map((book, index) => {
             const isInSelectedBranch = !book.branch || book.branch === selectedBranch || !selectedBranch
             return (
               <BookNode
@@ -565,7 +590,7 @@ export function RoadmapCanvas({
         )}
 
         {/* Progress Line at bottom */}
-        {!isEditable && <ProgressLine books={books} />}
+        {!isEditable && <ProgressLine books={positionedBooks} />}
 
         {/* Legend */}
         {!isEditable && (
