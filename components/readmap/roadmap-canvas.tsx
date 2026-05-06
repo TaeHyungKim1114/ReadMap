@@ -345,6 +345,7 @@ function BranchSelector({
               </div>
               <div>
                 <p className="text-xs font-medium text-foreground">{track.name}</p>
+                <p className="text-[10px] text-muted-foreground">{track.description}</p>
               </div>
             </button>
           )
@@ -463,7 +464,7 @@ export function RoadmapCanvas({
   const branchPointBook = roadmap.branchInfo 
     ? displayBooks.find(b => b.id === roadmap.branchInfo?.branchPoint)
     : null
-  const showBranchSelector = roadmap.hasBranches && branchPointBook?.status === 'in-progress'
+  const showBranchSelector = roadmap.hasBranches && (roadmap.branchInfo?.tracks?.length ?? 0) > 0
 
   // 마지막 책 위치 계산 (추가 버튼용)
   const lastBook = displayBooks.length > 0 ? displayBooks.reduce((prev, curr) => 
@@ -489,7 +490,7 @@ export function RoadmapCanvas({
         </div>
       )}
 
-      <div className="relative h-full min-w-[900px] p-6 pt-8 pb-20">
+      <div className="relative h-full min-w-[900px] p-6 pt-28 pb-20">
         {/* Branch Selector */}
         {showBranchSelector && !isEditable && (
           <BranchSelector
