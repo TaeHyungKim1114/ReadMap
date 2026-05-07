@@ -263,19 +263,20 @@ function MainApp() {
         }
         
         // 다음 책 잠금 해제 로직
-        if (book.prerequisiteIds?.includes(reviewData.bookId)) {
-          // 분기가 있는 경우 선택된 분기만 해제
-          if (book.branch) {
-            if (book.branch === selectedBranch && book.status === 'locked') {
-              return { ...book, status: 'in-progress' as const }
-            }
-          } else {
-            // 분기 없는 책은 모든 선행 조건 확인
-            const allPrereqsMet = book.prerequisiteIds.every(prereqId => {
-              const prereqBook = roadmap.books.find(b => b.id === prereqId)
-              return prereqBook?.status === 'completed' || prereqId === reviewData.bookId
-            })
-            if (allPrereqsMet && book.status === 'locked') {
+        if (book.prerequisiteIds?.includes(reviewData.bookId) && book.status === 'locked') {
+          // 모든 선행 조건이 충족되었는지 확인
+          const allPrereqsMet = book.prerequisiteIds.every(prereqId => {
+            const prereqBook = roadmap.books.find(b => b.id === prereqId)
+            return prereqBook?.status === 'completed' || prereqId === reviewData.bookId
+          })
+          
+          if (allPrereqsMet) {
+            // 분기가 있는 경우 선택된 분기만 해제, 분기가 없으면 바로 해제
+            if (book.branch) {
+              if (book.branch === selectedBranch || !selectedBranch) {
+                return { ...book, status: 'in-progress' as const }
+              }
+            } else {
               return { ...book, status: 'in-progress' as const }
             }
           }
