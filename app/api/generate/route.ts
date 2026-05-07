@@ -1,22 +1,4 @@
 import { NextResponse } from 'next/server'
-import { readFileSync, existsSync } from 'fs'
-
-// Load environment variables from v0 env file if not already set
-if (!process.env.OPENAI_API_KEY) {
-  const envPath = '/vercel/share/.env.project'
-  if (existsSync(envPath)) {
-    const envContent = readFileSync(envPath, 'utf-8')
-    envContent.split('\n').forEach(line => {
-      const [key, ...valueParts] = line.split('=')
-      if (key && valueParts.length > 0) {
-        const value = valueParts.join('=').trim()
-        if (!process.env[key.trim()]) {
-          process.env[key.trim()] = value
-        }
-      }
-    })
-  }
-}
 
 type GenerateRequestBody = {
   prompt?: string
