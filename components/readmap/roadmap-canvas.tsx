@@ -316,7 +316,7 @@ function BranchSelector({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="absolute right-4 top-4 z-10 rounded-xl border border-border bg-card/95 p-3 backdrop-blur-sm"
+      className="absolute left-6 top-6 z-20 rounded-xl border border-border bg-card/95 p-3 backdrop-blur-sm shadow-lg"
     >
       <div className="mb-2 flex items-center gap-2 text-xs font-medium text-foreground">
         <GitBranch className="h-3.5 w-3.5 text-primary" />
@@ -395,7 +395,7 @@ export function RoadmapCanvas({
       return depth
     }
 
-    const centeredBaseY = 150
+    const centeredBaseY = 180
     const depthGap = 180
     const stackGap = 120
     const trackGap = 130
@@ -509,7 +509,7 @@ export function RoadmapCanvas({
     <div className="relative h-[420px] w-full overflow-auto rounded-xl border border-border bg-card/50">
       {/* Save button for editable mode */}
       {isEditable && onSave && (
-        <div className="absolute left-4 top-4 z-10">
+        <div className="absolute right-4 top-4 z-20">
           <Button
             onClick={onSave}
             size="sm"
@@ -521,7 +521,7 @@ export function RoadmapCanvas({
         </div>
       )}
 
-      <div className="relative p-6 pt-28 pb-20" style={{ width: canvasWidth, height: canvasHeight }}>
+      <div className="relative p-6 pb-20" style={{ width: canvasWidth, height: canvasHeight }}>
         {/* Branch Selector */}
         {showBranchSelector && !isEditable && (
           <BranchSelector
