@@ -27,6 +27,7 @@ export function BookShareCard({
 }: BookShareCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [userQuote, setUserQuote] = useState('')
 
   // Confetti effect on mount
   useEffect(() => {
@@ -101,7 +102,7 @@ export function BookShareCard({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.8, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="relative w-full max-w-lg"
+          className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button */}
@@ -169,14 +170,12 @@ export function BookShareCard({
                 <h2 className="mb-1 text-center text-xl font-bold">{book.title}</h2>
                 <p className="mb-4 text-sm opacity-80">{book.author}</p>
 
-                {/* Quote or Why I Read This */}
-                {(whyIReadThis || book.keyTakeaways[0]) && (
-                  <div className="max-w-[250px] rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-                    <p className="text-center text-xs leading-relaxed opacity-90">
-                      &ldquo;{whyIReadThis || book.keyTakeaways[0]}&rdquo;
-                    </p>
-                  </div>
-                )}
+                {/* User Quote Input */}
+                <div className="max-w-[250px] rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+                  <p className="text-center text-xs leading-relaxed opacity-90">
+                    &ldquo;{userQuote || '여기에 한줄 서평을 작성하고 공유하세요!'}&rdquo;
+                  </p>
+                </div>
               </div>
 
               {/* Bottom Section - Roadmap Info & QR */}
@@ -199,8 +198,19 @@ export function BookShareCard({
             </div>
           </div>
 
+          {/* User Quote Input Field */}
+          <div className="mt-4">
+            <input
+              type="text"
+              value={userQuote}
+              onChange={(e) => setUserQuote(e.target.value)}
+              placeholder="여기에 한줄 서평을 작성하고 공유하세요!"
+              className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none focus:ring-0 backdrop-blur-sm"
+            />
+          </div>
+
           {/* Action Buttons */}
-          <div className="mt-6 flex flex-col gap-3">
+          <div className="mt-4 flex flex-col gap-3">
             <Button
               onClick={handleDownload}
               disabled={isDownloading}
