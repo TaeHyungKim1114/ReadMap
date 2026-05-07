@@ -385,6 +385,7 @@ export async function POST(request: Request) {
     // If env loading fails in your local setup, you can temporarily replace
     // this with your key directly: const apiKey = "YOUR_KEY_HERE"
     const apiKey = process.env.OPENAI_API_KEY ?? 'YOUR_KEY_HERE'
+    console.log('[v0] OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY, 'length:', process.env.OPENAI_API_KEY?.length)
     if (!apiKey || apiKey === 'YOUR_KEY_HERE') {
       return NextResponse.json(
         {
