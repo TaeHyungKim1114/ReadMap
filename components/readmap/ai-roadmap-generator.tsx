@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, X, BookOpen, Target, Wand2, Bot, Brain, Search, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Roadmap, Book } from '@/lib/book-data'
+import { Roadmap, Book, createCoupangSearchUrl } from '@/lib/book-data'
 import { useToast } from '@/hooks/use-toast'
 
 interface AIRoadmapGeneratorProps {
@@ -17,6 +17,7 @@ type APINode = {
   title?: string
   label?: string
   author?: string
+  coupangSearchUrl?: string
   branch?: string
   requiresChoice?: boolean
   position?: { x: number; y: number }
@@ -63,6 +64,7 @@ const generateMockAIRoadmap = (goal: string): Roadmap => {
       usedPrice: 9000,
       rating: 4.5,
       reviewCount: 1234,
+      coupangSearchUrl: createCoupangSearchUrl('시작하기 기초 다지기 도서'),
       aladinUrl: 'https://www.aladin.co.kr',
       isbn: '1234567890',
       whyRead: '이 분야에 입문하기 위한 필수 기초서입니다. 쉬운 언어로 핵심 개념을 설명합니다.'
@@ -85,6 +87,7 @@ const generateMockAIRoadmap = (goal: string): Roadmap => {
       usedPrice: 11000,
       rating: 4.3,
       reviewCount: 567,
+      coupangSearchUrl: createCoupangSearchUrl('심화 학습 실전 적용 도서'),
       aladinUrl: 'https://www.aladin.co.kr',
       isbn: '1234567891',
       prerequisiteIds: [`${id}-book-1`],
@@ -108,6 +111,7 @@ const generateMockAIRoadmap = (goal: string): Roadmap => {
       usedPrice: 13000,
       rating: 4.7,
       reviewCount: 890,
+      coupangSearchUrl: createCoupangSearchUrl('마스터리 전문가 되기 도서'),
       aladinUrl: 'https://www.aladin.co.kr',
       isbn: '1234567892',
       prerequisiteIds: [`${id}-book-2`],
@@ -177,6 +181,7 @@ const normalizeRoadmap = (raw: RoadmapLike, fallbackGoal: string): Roadmap => {
       usedPrice: 0,
       rating: 0,
       reviewCount: 0,
+      coupangSearchUrl: node.coupangSearchUrl || createCoupangSearchUrl(node.title || node.label || `도서 ${index + 1}`),
       aladinUrl: '',
       isbn: '',
       branch: node.branch,
@@ -235,6 +240,7 @@ const normalizeRoadmap = (raw: RoadmapLike, fallbackGoal: string): Roadmap => {
     totalBooks: spreadBooks.length,
     estimatedDays: spreadBooks.length * 14,
     hasBranches: raw.hasBranches ?? hasBranchTracks,
+    recommendedItems: Array.isArray(raw.recommendedItems) ? raw.recommendedItems : [],
     branchInfo: normalizedBranchInfo,
     books: spreadBooks,
   }

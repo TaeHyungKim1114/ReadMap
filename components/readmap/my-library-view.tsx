@@ -1,9 +1,9 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Book, Review, formatDate, formatPrice } from '@/lib/book-data'
+import { Book, Review, createCoupangSearchUrl, formatDate, formatPrice } from '@/lib/book-data'
 import { useAuth } from '@/lib/auth-context'
-import { Star, BookOpen, Calendar, ExternalLink } from 'lucide-react'
+import { Star, BookOpen, Calendar, ExternalLink, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface MyLibraryViewProps {
@@ -137,22 +137,27 @@ export function MyLibraryView({ completedBooks, myReviews }: MyLibraryViewProps)
                       </div>
                     )}
 
-                    {/* 알라딘 링크 */}
+                    {/* 쿠팡 링크 */}
                     <div className="mt-4 flex items-center justify-between">
                       <div className="text-sm">
                         <span className="text-muted-foreground">구매가: </span>
                         <span className="font-medium text-foreground">{formatPrice(book.price)}</span>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(book.aladinUrl, '_blank')}
-                        className="gap-2"
-                      >
-                        알라딘에서 보기
-                        <ExternalLink className="h-3 w-3" />
+                      <Button asChild variant="outline" size="sm" className="gap-2">
+                        <a
+                          href={book.coupangSearchUrl || createCoupangSearchUrl(book.title)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ShoppingCart className="h-3 w-3" />
+                          쿠팡에서 구매
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
                       </Button>
                     </div>
+                    <p className="mt-2 text-xs text-gray-400">
+                      이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
+                    </p>
                   </div>
                 </div>
               </motion.div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Star, StarHalf, ExternalLink, Tag, Check, PenLine, Lock, Edit3, ShoppingCart, BookMarked, Sparkles } from 'lucide-react'
 import confetti from 'canvas-confetti'
-import { Book, formatPrice, Difficulty } from '@/lib/book-data'
+import { Book, createCoupangSearchUrl, formatPrice, Difficulty } from '@/lib/book-data'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -51,6 +51,7 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: BookDrawerProps) {
+  const purchaseUrl = book ? book.coupangSearchUrl || createCoupangSearchUrl(book.title) : ''
   const [isEditingWhyRead, setIsEditingWhyRead] = useState(false)
   const [whyReadText, setWhyReadText] = useState('')
 
@@ -230,11 +231,11 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
                 )}
               </div>
 
-              {/* Aladin Rating Section */}
+              {/* Marketplace Rating Section */}
               <div className="mb-6 rounded-xl border border-border bg-secondary/50 p-4">
                 <div className="mb-3 flex items-center gap-2">
-                  <div className="flex h-6 items-center rounded bg-[#0066b3] px-2">
-                    <span className="text-xs font-bold text-white">알라딘</span>
+                  <div className="flex h-6 items-center rounded bg-[#f97316] px-2">
+                    <span className="text-xs font-bold text-white">쿠팡</span>
                   </div>
                   <span className="text-sm text-muted-foreground">사용자 평점</span>
                 </div>
@@ -266,19 +267,19 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
                 </ul>
               </div>
 
-              {/* Aladin Buy Buttons - High Visibility */}
+              {/* Coupang Buy Buttons - High Visibility */}
               <div className="space-y-3">
-                {/* New Book Button */}
+                {/* Main Buy Button */}
                 <Button
                   asChild
-                  className="w-full bg-[#0066b3] text-white hover:bg-[#0055a0] h-14"
+                  className="w-full bg-[#f97316] text-white hover:bg-[#ea580c] h-14"
                   size="lg"
                 >
-                  <a href={book.aladinUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={purchaseUrl} target="_blank" rel="noopener noreferrer">
                     <div className="flex w-full items-center justify-between">
                       <div className="flex items-center gap-2">
                         <ShoppingCart className="h-5 w-5" />
-                        <span className="font-semibold">새 책 구매하기</span>
+                        <span className="font-semibold">쿠팡 최저가 확인</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-lg font-bold">{formatPrice(book.price)}</span>
@@ -288,18 +289,18 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
                   </a>
                 </Button>
 
-                {/* Used Book Button */}
+                {/* Secondary Buy Button */}
                 <Button
                   asChild
                   variant="outline"
-                  className="w-full border-[#ff6600] bg-[#ff6600]/10 text-[#ff6600] hover:bg-[#ff6600]/20 h-14"
+                  className="w-full border-[#f97316] bg-[#f97316]/10 text-[#f97316] hover:bg-[#f97316]/20 h-14"
                   size="lg"
                 >
-                  <a href={book.aladinUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={purchaseUrl} target="_blank" rel="noopener noreferrer">
                     <div className="flex w-full items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Tag className="h-5 w-5" />
-                        <span className="font-semibold">중고 책 찾기</span>
+                        <span className="font-semibold">쿠팡에서 구매</span>
                         <span className="rounded bg-[#ff6600] px-1.5 py-0.5 text-[10px] font-bold text-white">
                           {Math.round((1 - book.usedPrice / book.price) * 100)}% 절약
                         </span>
@@ -315,6 +316,9 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
               
               <p className="mt-4 text-center text-xs text-muted-foreground">
                 ISBN: {book.isbn}
+              </p>
+              <p className="mt-2 text-center text-xs text-gray-400">
+                이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
               </p>
             </div>
           </motion.div>

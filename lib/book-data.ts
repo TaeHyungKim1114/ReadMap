@@ -29,7 +29,8 @@ export interface Book {
   usedPrice: number
   rating: number
   reviewCount: number
-  aladinUrl: string
+  coupangSearchUrl?: string
+  aladinUrl?: string
   isbn: string
   // Review requirement
   hasReview?: boolean
@@ -52,11 +53,20 @@ export interface Roadmap {
   totalBooks?: number
   estimatedDays?: number
   hasBranches?: boolean
+  recommendedItems?: Array<{
+    id: string
+    name: string
+    reason: string
+    coupangSearchUrl: string
+  }>
   branchInfo?: {
     branchPoint: string // 분기가 시작되는 책 ID
     tracks: Array<{ id: string; name: string; description: string }>
   }
 }
+
+export const createCoupangSearchUrl = (query: string): string =>
+  `https://link.coupang.com/a/custom-url?q=${encodeURIComponent(query)}`
 
 // 여러 로드맵 데이터 (분기 포함)
 export const roadmaps: Roadmap[] = [

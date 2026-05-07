@@ -18,8 +18,9 @@ import { AuthProvider, useAuth } from '@/lib/auth-context'
 import { roadmaps as initialRoadmaps, sampleReviews, type Book, type Review, type Roadmap } from '@/lib/book-data'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Edit3, Save } from 'lucide-react'
+import { Edit3, ExternalLink, Save, ShoppingCart } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { createCoupangSearchUrl } from '@/lib/book-data'
 
 type ViewMode = 'roadmap' | 'community' | 'select-roadmap' | 'my-library' | 'settings'
 type APINode = {
@@ -27,6 +28,7 @@ type APINode = {
   title?: string
   label?: string
   author?: string
+  coupangSearchUrl?: string
   branch?: string
   requiresChoice?: boolean
   position?: { x: number; y: number }
@@ -367,6 +369,7 @@ function MainApp() {
         usedPrice: 0,
         rating: 0,
         reviewCount: 0,
+        coupangSearchUrl: node.coupangSearchUrl || createCoupangSearchUrl(node.title || node.label || `도서 ${index + 1}`),
         aladinUrl: '',
         isbn: '',
         branch: node.branch,
@@ -428,6 +431,7 @@ function MainApp() {
       totalBooks: raw.totalBooks ?? spreadBooks.length,
       estimatedDays: raw.estimatedDays,
       hasBranches: raw.hasBranches ?? hasBranchTracks,
+      recommendedItems: Array.isArray(raw.recommendedItems) ? raw.recommendedItems : [],
       branchInfo: normalizedBranchInfo,
     }
   }
@@ -590,6 +594,7 @@ function MainApp() {
         usedPrice: 10000,
         rating: 4.0,
         reviewCount: 0,
+        coupangSearchUrl: createCoupangSearchUrl('새 책 추가'),
         aladinUrl: 'https://www.aladin.co.kr',
         isbn: '0000000000',
         prerequisiteIds: afterBookId ? [afterBookId] : undefined,
@@ -790,6 +795,42 @@ function MainApp() {
                   {activeRoadmap.books.filter((b) => b.status === 'in-progress').length}권
                 </p>
               </div>
+            </motion.section>
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+              className="mt-6 rounded-xl border border-border bg-card p-4"
+            >
+              <h3 className="mb-3 text-sm font-semibold text-foreground">이 학습을 시작하기 위해 필요한 필수 장비</h3>
+              {(activeRoadmap.recommendedItems?.length ?? 0) > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {activeRoadmap.recommendedItems?.map((item) => (
+                    <a
+                      key={item.id}
+                      href={item.coupangSearchUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-start justify-between rounded-lg border border-border bg-background p-3 transition-colors hover:border-primary/50"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{item.name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{item.reason}</p>
+                      </div>
+                      <span className="ml-3 inline-flex items-center gap-1 text-xs text-primary">
+                        <ShoppingCart className="h-3.5 w-3.5" />
+                        쿠팡에서 구매
+                        <ExternalLink className="h-3 w-3" />
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">AI가 추천한 장비가 아직 없습니다.</p>
+              )}
+              <p className="mt-3 text-xs text-gray-400">
+                이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
+              </p>
             </motion.section>
           </>
         )}
