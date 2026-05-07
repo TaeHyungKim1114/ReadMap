@@ -284,19 +284,24 @@ function buildFallbackRoadmap(prompt: string): RoadmapResponse {
   }
 }
 
-async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: boolean) {
+async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: boolean, useAiGateway: boolean = false) {
   const retryHint = isRetry
     ? '\n중요: 이전 결과 품질이 낮았습니다. 반드시 더 유명하고 검증 가능한 실존 도서를 선택하세요.'
     : ''
 
-  const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+  // Use Vercel AI Gateway if available, otherwise use OpenAI directly
+  const apiUrl = useAiGateway 
+    ? 'https://api.vercel.ai/v1/chat/completions'
+    : 'https://api.openai.com/v1/chat/completions'
+
+  const openAIResponse = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: useAiGateway ? 'openai/gpt-4o-mini' : 'gpt-4o-mini',
       response_format: { type: 'json_object' },
       messages: [
         {
@@ -381,17 +386,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'prompt is required' }, { status: 400 })
     }
 
-    // Prefer .env.local: OPENAI_API_KEY=...
-    // If env loading fails in your local setup, you can temporarily replace
-    // this with your key directly: const apiKey = "YOUR_KEY_HERE"
-    const apiKey = process.env.OPENAI_API_KEY ?? 'YOUR_KEY_HERE'
-    console.log('[v0] OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY, 'length:', process.env.OPENAI_API_KEY?.length)
+    // Use AI Gateway if available (v0 environment), otherwise fall back to OpenAI API
+    const aiGatewayKey = process.env.AI_GATEWAY_API_KEY
+    const openAiKey = process.env.OPENAI_API_KEY
+    const apiKey = aiGatewayKey || openAiKey || 'YOUR_KEY_HERE'
+    const useAiGateway = !!aiGatewayKey
+    
     if (!apiKey || apiKey === 'YOUR_KEY_HERE') {
       return NextResponse.json(
         {
-          error: 'OPENAI_API_KEY is not configured',
+          error: 'API key is not configured',
           guide:
-            'Set OPENAI_API_KEY in .env.local, or temporarily replace apiKey in app/api/generate/route.ts with "YOUR_KEY_HERE".',
+            'Set OPENAI_API_KEY in .env.local, or use v0 environment with AI_GATEWAY_API_KEY.',
         },
         { status: 500 }
       )
@@ -400,7 +406,7 @@ export async function POST(request: Request) {
     const attemptErrors: string[] = []
     for (const isRetry of [false, true]) {
       try {
-        const candidate = await requestRoadmapCandidate(apiKey, prompt, isRetry)
+        const candidate = await requestRoadmapCandidate(apiKey, prompt, isRetry, useAiGateway)
         if (!candidate) {
           console.warn('[api/generate] Invalid model output shape', { isRetry })
           attemptErrors.push(`attempt ${isRetry ? 2 : 1}: invalid model output shape`)
