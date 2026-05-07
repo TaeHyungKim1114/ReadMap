@@ -24,13 +24,12 @@ export interface Book {
   difficulty: Difficulty
   keyTakeaways: string[]
   position: { x: number; y: number }
-  // Aladin-style fields
+  // Commerce fields
   price: number
   usedPrice: number
   rating: number
   reviewCount: number
   coupangSearchUrl?: string
-  aladinUrl?: string
   isbn: string
   // Review requirement
   hasReview?: boolean
@@ -106,7 +105,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 15000,
         rating: 4.8,
         reviewCount: 12847,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=316469458',
+        coupangSearchUrl: createCoupangSearchUrl('현명한 투자자 벤저민 그레이엄'),
         isbn: '9788936438289'
       },
       {
@@ -130,7 +129,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 12000,
         rating: 4.6,
         reviewCount: 8932,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=44370180',
+        coupangSearchUrl: createCoupangSearchUrl('제로 투 원 피터 틸'),
         isbn: '9788947536349',
         prerequisiteIds: ['intelligent-investor']
       },
@@ -156,7 +155,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 14000,
         rating: 4.5,
         reviewCount: 5621,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=165173203',
+        coupangSearchUrl: createCoupangSearchUrl('AI 슈퍼파워 리카이푸'),
         isbn: '9791160506563',
         prerequisiteIds: ['zero-to-one']
       },
@@ -181,7 +180,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 11500,
         rating: 4.6,
         reviewCount: 6234,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=17828901',
+        coupangSearchUrl: createCoupangSearchUrl('혁신기업의 딜레마 클레이튼 크리스텐슨'),
         isbn: '9788990247872',
         prerequisiteIds: ['ai-superpowers']
       },
@@ -207,7 +206,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 13500,
         rating: 4.7,
         reviewCount: 15234,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=15573932',
+        coupangSearchUrl: createCoupangSearchUrl('생각에 관한 생각 대니얼 카너먼'),
         isbn: '9788934953685',
         prerequisiteIds: ['zero-to-one']
       },
@@ -232,7 +231,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 10000,
         rating: 4.8,
         reviewCount: 18234,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=265056269',
+        coupangSearchUrl: createCoupangSearchUrl('돈의 심리학 모건 하우절'),
         isbn: '9791167370570',
         prerequisiteIds: ['thinking-fast-slow']
       },
@@ -257,7 +256,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 8000,
         rating: 4.4,
         reviewCount: 23456,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=263253595',
+        coupangSearchUrl: createCoupangSearchUrl('부자 아빠 가난한 아빠 로버트 기요사키'),
         isbn: '9791191056495',
         prerequisiteIds: ['innovators-dilemma', 'psychology-of-money']
       }
@@ -300,7 +299,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 11000,
         rating: 4.5,
         reviewCount: 9823,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=16444738',
+        coupangSearchUrl: createCoupangSearchUrl('린 스타트업 에릭 리스'),
         isbn: '9788962605556'
       },
       // 분기 A: 리더십
@@ -325,7 +324,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 12500,
         rating: 4.7,
         reviewCount: 7654,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=40181891',
+        coupangSearchUrl: createCoupangSearchUrl('하드씽 벤 호로위츠'),
         isbn: '9788997575671',
         prerequisiteIds: ['lean-startup']
       },
@@ -350,7 +349,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 9500,
         rating: 4.6,
         reviewCount: 8901,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=227364',
+        coupangSearchUrl: createCoupangSearchUrl('좋은 기업을 넘어 위대한 기업으로 짐 콜린스'),
         isbn: '9788934920090',
         prerequisiteIds: ['hard-thing']
       },
@@ -376,7 +375,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 13000,
         rating: 4.4,
         reviewCount: 4521,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=187824589',
+        coupangSearchUrl: createCoupangSearchUrl('블리츠스케일링 리드 호프만'),
         isbn: '9791160509779',
         prerequisiteIds: ['lean-startup']
       },
@@ -401,7 +400,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 11000,
         rating: 4.5,
         reviewCount: 5678,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=267537',
+        coupangSearchUrl: createCoupangSearchUrl('캐즘 마케팅 제프리 무어'),
         isbn: '9788925567044',
         prerequisiteIds: ['blitzscaling']
       },
@@ -426,7 +425,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 10500,
         rating: 4.5,
         reviewCount: 6789,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=156880642',
+        coupangSearchUrl: createCoupangSearchUrl('OKR 존 도어'),
         isbn: '9788934987543',
         prerequisiteIds: ['good-to-great', 'crossing-chasm']
       }
@@ -460,7 +459,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 10000,
         rating: 4.8,
         reviewCount: 18234,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=265056269',
+        coupangSearchUrl: createCoupangSearchUrl('돈의 심리학 모건 하우절'),
         isbn: '9791167370570'
       },
       {
@@ -483,7 +482,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 8500,
         rating: 4.5,
         reviewCount: 11234,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=167328752',
+        coupangSearchUrl: createCoupangSearchUrl('이웃집 백만장자 토머스 스탠리'),
         isbn: '9788934982234',
         prerequisiteIds: ['money-master']
       },
@@ -507,7 +506,7 @@ export const roadmaps: Roadmap[] = [
         usedPrice: 7000,
         rating: 4.6,
         reviewCount: 9876,
-        aladinUrl: 'https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=112233',
+        coupangSearchUrl: createCoupangSearchUrl('바빌론 부자들의 돈 버는 지혜 조지 S. 클레이슨'),
         isbn: '9788934974567',
         prerequisiteIds: ['millionaire-next-door']
       }

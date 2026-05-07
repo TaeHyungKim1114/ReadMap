@@ -42,8 +42,8 @@
   --emerald: oklch(0.765 0.177 163);
   --emerald-dark: oklch(0.527 0.147 163);
   --yellow-glow: oklch(0.879 0.169 91);
-  --aladin-blue: oklch(0.546 0.192 262);
-  --aladin-orange: oklch(0.702 0.183 54);
+  --coupang-blue: oklch(0.546 0.192 262);
+  --coupang-orange: oklch(0.702 0.183 54);
 }
 
 .dark {
@@ -123,8 +123,8 @@
   --color-emerald: var(--emerald);
   --color-emerald-dark: var(--emerald-dark);
   --color-yellow-glow: var(--yellow-glow);
-  --color-aladin-blue: var(--aladin-blue);
-  --color-aladin-orange: var(--aladin-orange);
+  --color-coupang-blue: var(--coupang-blue);
+  --color-coupang-orange: var(--coupang-orange);
 }
 
 @layer base {

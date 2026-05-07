@@ -65,7 +65,6 @@ const generateMockAIRoadmap = (goal: string): Roadmap => {
       rating: 4.5,
       reviewCount: 1234,
       coupangSearchUrl: createCoupangSearchUrl('시작하기 기초 다지기 도서'),
-      aladinUrl: 'https://www.aladin.co.kr',
       isbn: '1234567890',
       whyRead: '이 분야에 입문하기 위한 필수 기초서입니다. 쉬운 언어로 핵심 개념을 설명합니다.'
     },
@@ -88,7 +87,6 @@ const generateMockAIRoadmap = (goal: string): Roadmap => {
       rating: 4.3,
       reviewCount: 567,
       coupangSearchUrl: createCoupangSearchUrl('심화 학습 실전 적용 도서'),
-      aladinUrl: 'https://www.aladin.co.kr',
       isbn: '1234567891',
       prerequisiteIds: [`${id}-book-1`],
       whyRead: '기초를 다진 후 실전에 적용하는 방법을 배웁니다.'
@@ -112,7 +110,6 @@ const generateMockAIRoadmap = (goal: string): Roadmap => {
       rating: 4.7,
       reviewCount: 890,
       coupangSearchUrl: createCoupangSearchUrl('마스터리 전문가 되기 도서'),
-      aladinUrl: 'https://www.aladin.co.kr',
       isbn: '1234567892',
       prerequisiteIds: [`${id}-book-2`],
       whyRead: '전문가 수준의 지식과 통찰을 얻을 수 있습니다.'
@@ -182,7 +179,6 @@ const normalizeRoadmap = (raw: RoadmapLike, fallbackGoal: string): Roadmap => {
       rating: 0,
       reviewCount: 0,
       coupangSearchUrl: node.coupangSearchUrl || createCoupangSearchUrl(node.title || node.label || `도서 ${index + 1}`),
-      aladinUrl: '',
       isbn: '',
       branch: node.branch,
       requiresChoice: node.requiresChoice,

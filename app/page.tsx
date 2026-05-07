@@ -370,7 +370,6 @@ function MainApp() {
         rating: 0,
         reviewCount: 0,
         coupangSearchUrl: node.coupangSearchUrl || createCoupangSearchUrl(node.title || node.label || `도서 ${index + 1}`),
-        aladinUrl: '',
         isbn: '',
         branch: node.branch,
         requiresChoice: node.requiresChoice,
@@ -595,7 +594,6 @@ function MainApp() {
         rating: 4.0,
         reviewCount: 0,
         coupangSearchUrl: createCoupangSearchUrl('새 책 추가'),
-        aladinUrl: 'https://www.aladin.co.kr',
         isbn: '0000000000',
         prerequisiteIds: afterBookId ? [afterBookId] : undefined,
         whyRead: '이 책을 왜 읽어야 하는지 작성해보세요.'
