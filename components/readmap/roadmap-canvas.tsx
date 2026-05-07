@@ -379,9 +379,10 @@ export function RoadmapCanvas({
   }, new Map<string, string>())
   const displayBooks = (() => {
     const booksCopy = books.map((book) => ({ ...book, position: { ...book.position } }))
-    const uniqueTracks = Array.from(new Set(booksCopy.map((book) => book.branch).filter(Boolean))) as string[]
     const depthMemo = new Map<string, number>()
     const byId = new Map(booksCopy.map((book) => [book.id, book]))
+    
+    // Calculate depth (step) for each book based on prerequisites
     const getDepth = (book: Book): number => {
       if (depthMemo.has(book.id)) return depthMemo.get(book.id) as number
       const prereqs = book.prerequisiteIds ?? []
@@ -395,59 +396,42 @@ export function RoadmapCanvas({
       return depth
     }
 
-    const centeredBaseY = 150
-    const depthGap = 180
-    const stackGap = 120
-    const trackGap = 130
-    const laneMain = '__MAIN__'
-    const hasMainLane = booksCopy.some((book) => !book.branch)
-    const sortedTracks = uniqueTracks.length > 0
-      ? [...(hasMainLane ? [laneMain] : []), ...uniqueTracks.sort()]
-      : [laneMain]
-    const centerIndex = (sortedTracks.length - 1) / 2
-    const trackYById = new Map<string, number>(
-      sortedTracks.map((id, index) => [id, centeredBaseY + (index - centerIndex) * trackGap])
-    )
+    const canvasCenterY = 190 // Vertical center of the canvas
+    const depthGap = 180 // Horizontal gap between steps
+    const verticalGap = 130 // Vertical gap between books in the same step
 
-    const layoutItems = booksCopy.map((book) => {
+    // Group books by depth (step)
+    const booksByDepth = new Map<number, Book[]>()
+    booksCopy.forEach((book) => {
       const depth = getDepth(book)
-      return {
-        book,
-        depth,
-        lane: book.branch ?? laneMain,
+      if (!booksByDepth.has(depth)) {
+        booksByDepth.set(depth, [])
       }
+      booksByDepth.get(depth)!.push(book)
     })
 
-    const groupTotalByKey = new Map<string, number>()
-    layoutItems.forEach(({ depth, lane }) => {
-      const key = `${depth}|${lane}`
-      groupTotalByKey.set(key, (groupTotalByKey.get(key) ?? 0) + 1)
+    // Position books - center each step vertically (mind map style)
+    const positionedBooks: Book[] = []
+    
+    booksByDepth.forEach((booksAtDepth, depth) => {
+      const count = booksAtDepth.length
+      // Calculate total height of this column
+      const totalHeight = (count - 1) * verticalGap
+      // Start Y so that the center of the group is at canvasCenterY
+      const startY = canvasCenterY - totalHeight / 2
+
+      booksAtDepth.forEach((book, index) => {
+        const x = 40 + depth * depthGap
+        const y = startY + index * verticalGap
+
+        positionedBooks.push({
+          ...book,
+          position: { x, y },
+        })
+      })
     })
 
-    const groupSeenByKey = new Map<string, number>()
-    const maxPerColumn = 2
-
-    return layoutItems.map(({ book, depth, lane }) => {
-      const key = `${depth}|${lane}`
-      const seen = groupSeenByKey.get(key) ?? 0
-      const total = groupTotalByKey.get(key) ?? 1
-      groupSeenByKey.set(key, seen + 1)
-
-      // Keep mindmap-like horizontal expansion:
-      // if one depth/lane has too many nodes, spill into next columns.
-      const columnOffset = Math.floor(seen / maxPerColumn)
-      const rowInColumn = seen % maxPerColumn
-      const remaining = total - columnOffset * maxPerColumn
-      const rowsInThisColumn = Math.max(1, Math.min(maxPerColumn, remaining))
-      const stackOffset = (rowInColumn - (rowsInThisColumn - 1) / 2) * stackGap
-      const x = 40 + (depth + columnOffset) * depthGap
-      const y = (trackYById.get(lane) ?? centeredBaseY) + stackOffset
-
-      return {
-        ...book,
-        position: { x, y },
-      }
-    })
+    return positionedBooks
   })()
 
   const positionedBooks = (() => {
