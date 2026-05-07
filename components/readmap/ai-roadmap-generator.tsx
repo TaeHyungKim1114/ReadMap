@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, X, BookOpen, Target, Wand2, Bot, Brain, Search, Zap } from 'lucide-react'
+import { Sparkles, X, BookOpen, Target, Wand2, Bot, Brain, Search, Zap, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Roadmap, Book, createCoupangSearchUrl } from '@/lib/book-data'
@@ -12,6 +12,12 @@ interface AIRoadmapGeneratorProps {
   onRoadmapGenerated: (roadmap: Roadmap) => void
   onClose: () => void
 }
+type ErrorState = {
+  message: string
+  details?: string[]
+  isExpanded: boolean
+}
+
 type APINode = {
   id: string
   title?: string
@@ -273,12 +279,14 @@ export function AIRoadmapGenerator({ onRoadmapGenerated, onClose }: AIRoadmapGen
   const [isGenerating, setIsGenerating] = useState(false)
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [generatedRoadmap, setGeneratedRoadmap] = useState<Roadmap | null>(null)
+  const [errorState, setErrorState] = useState<ErrorState | null>(null)
 
   const handleGenerate = async () => {
-    if (!goal.trim()) return
+    if (!goal.trim() || isGenerating) return
 
     setIsGenerating(true)
     setCurrentMessageIndex(0)
+    setErrorState(null)
     let loadingInterval: ReturnType<typeof setInterval> | undefined
     try {
       loadingInterval = setInterval(() => {
@@ -292,21 +300,43 @@ export function AIRoadmapGenerator({ onRoadmapGenerated, onClose }: AIRoadmapGen
       })
 
       if (!response.ok) {
-        let serverMessage = ''
+        let errorMessage = '일시적으로 AI 로드맵 생성에 실패했어요.'
+        let errorDetails: string[] = []
+        
         try {
           const errorPayload = (await response.json()) as {
             error?: string
             detail?: string
             attempts?: string[]
           }
-          const attemptMessage = Array.isArray(errorPayload.attempts) && errorPayload.attempts.length > 0
-            ? `\n상세 원인:\n- ${errorPayload.attempts.join('\n- ')}`
-            : ''
-          serverMessage = `${[errorPayload.error, errorPayload.detail].filter(Boolean).join(' - ')}${attemptMessage}`.trim()
+          
+          if (errorPayload.error) {
+            errorMessage = errorPayload.error
+          }
+          
+          if (Array.isArray(errorPayload.attempts) && errorPayload.attempts.length > 0) {
+            errorDetails = errorPayload.attempts
+          }
+          
+          if (errorPayload.detail) {
+            errorDetails = [errorPayload.detail, ...errorDetails]
+          }
         } catch {
-          serverMessage = await response.text()
+          errorMessage = '서버와의 통신 중 오류가 발생했어요.'
         }
-        throw new Error(`API 요청 실패 (${response.status})${serverMessage ? `: ${serverMessage}` : ''}`)
+        
+        setErrorState({
+          message: errorMessage,
+          details: errorDetails.length > 0 ? errorDetails : undefined,
+          isExpanded: false,
+        })
+        
+        toast({
+          variant: 'destructive',
+          title: '로드맵 생성 실패',
+          description: '잠시 후 다시 시도해주세요.',
+        })
+        return
       }
 
       const payload = (await response.json()) as { roadmap?: RoadmapLike; roadmaps?: RoadmapLike[] }
@@ -320,13 +350,21 @@ export function AIRoadmapGenerator({ onRoadmapGenerated, onClose }: AIRoadmapGen
       }
     } catch (error) {
       console.error('AI 로드맵 생성 실패:', error)
+      
+      const isNetworkError = error instanceof TypeError && error.message.includes('fetch')
+      
+      setErrorState({
+        message: isNetworkError 
+          ? '네트워크 연결을 확인해주세요.' 
+          : '일시적으로 AI 로드맵 생성에 실패했어요.',
+        details: error instanceof Error ? [error.message] : undefined,
+        isExpanded: false,
+      })
+      
       toast({
         variant: 'destructive',
         title: '로드맵 생성 실패',
-        description:
-          error instanceof Error
-            ? error.message
-            : '로드맵 생성에 실패했습니다.',
+        description: '잠시 후 다시 시도해주세요.',
       })
     } finally {
       if (loadingInterval) clearInterval(loadingInterval)
@@ -463,6 +501,72 @@ export function AIRoadmapGenerator({ onRoadmapGenerated, onClose }: AIRoadmapGen
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
+              {/* Error State */}
+              {errorState && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/20">
+                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-destructive">로드맵 생성 실패</h4>
+                      <p className="mt-1 text-sm text-destructive/80">{errorState.message}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">잠시 후 다시 시도해주세요.</p>
+                      
+                      {/* Error Details (Collapsible) */}
+                      {errorState.details && errorState.details.length > 0 && (
+                        <div className="mt-3">
+                          <button
+                            onClick={() => setErrorState(prev => prev ? { ...prev, isExpanded: !prev.isExpanded } : null)}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {errorState.isExpanded ? (
+                              <ChevronUp className="h-3 w-3" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3" />
+                            )}
+                            상세 정보 {errorState.isExpanded ? '접기' : '보기'}
+                          </button>
+                          
+                          <AnimatePresence>
+                            {errorState.isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="mt-2 rounded-lg bg-background/50 p-3 text-xs font-mono text-muted-foreground">
+                                  {errorState.details.map((detail, idx) => (
+                                    <p key={idx} className="mb-1 last:mb-0">- {detail}</p>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
+                      
+                      {/* Retry Button */}
+                      <Button
+                        onClick={handleGenerate}
+                        disabled={isGenerating || !goal.trim()}
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                      >
+                        <RefreshCw className={cn("h-4 w-4", isGenerating && "animate-spin")} />
+                        다시 시도하기
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Goal Input */}
               <div className="mb-6">
                 <label className="mb-2 block text-sm font-medium text-foreground">
@@ -473,7 +577,10 @@ export function AIRoadmapGenerator({ onRoadmapGenerated, onClose }: AIRoadmapGen
                   <input
                     type="text"
                     value={goal}
-                    onChange={(e) => setGoal(e.target.value)}
+                    onChange={(e) => {
+                      setGoal(e.target.value)
+                      if (errorState) setErrorState(null)
+                    }}
                     placeholder="예: 개발자로서 성장하고 싶어요"
                     className="w-full rounded-xl border border-border bg-background py-4 pl-12 pr-4 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                     onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
@@ -505,16 +612,34 @@ export function AIRoadmapGenerator({ onRoadmapGenerated, onClose }: AIRoadmapGen
               {/* Generate Button */}
               <Button
                 onClick={handleGenerate}
-                disabled={!goal.trim()}
+                disabled={!goal.trim() || isGenerating}
                 className="w-full gap-2 py-6 text-base"
               >
-                <Wand2 className="h-5 w-5" />
-                로드맵 생성하기
+                {isGenerating ? (
+                  <>
+                    <RefreshCw className="h-5 w-5 animate-spin" />
+                    생성 중...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="h-5 w-5" />
+                    로드맵 생성하기
+                  </>
+                )}
               </Button>
 
               <p className="mt-4 text-center text-xs text-muted-foreground">
                 AI는 입력한 목표를 분석하여 단계별 독서 로드맵을 추천합니다
               </p>
+              
+              {/* Admin Help Text */}
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  로드맵 생성이 계속 실패한다면, 서버 환경변수 설정 및 배포 상태를 확인해주세요.
+                  환경변수 변경 후에는 재배포가 필요합니다.
+                </p>
+              </div>
             </motion.div>
           ) : (
             <motion.div

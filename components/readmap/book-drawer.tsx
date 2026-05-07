@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Star, StarHalf, ExternalLink, Tag, Check, PenLine, Lock, Edit3, ShoppingCart, BookMarked, Sparkles } from 'lucide-react'
+import { X, Star, StarHalf, ExternalLink, Check, PenLine, Lock, Edit3, ShoppingCart, BookMarked, Sparkles } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { Book, createCoupangSearchUrl, formatPrice, Difficulty } from '@/lib/book-data'
 import { Button } from '@/components/ui/button'
@@ -289,29 +289,7 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
                   </a>
                 </Button>
 
-                {/* Secondary Buy Button */}
-                <Button
-                  asChild
-                  variant="outline"
-                  className="w-full border-[#f97316] bg-[#f97316]/10 text-[#f97316] hover:bg-[#f97316]/20 h-14"
-                  size="lg"
-                >
-                  <a href={purchaseUrl} target="_blank" rel="noopener noreferrer">
-                    <div className="flex w-full items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Tag className="h-5 w-5" />
-                        <span className="font-semibold">쿠팡에서 구매</span>
-                        <span className="rounded bg-[#ff6600] px-1.5 py-0.5 text-[10px] font-bold text-white">
-                          {Math.round((1 - book.usedPrice / book.price) * 100)}% 절약
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold">{formatPrice(book.usedPrice)}</span>
-                        <ExternalLink className="h-4 w-4" />
-                      </div>
-                    </div>
-                  </a>
-                </Button>
+
               </div>
               
               <p className="mt-4 text-center text-xs text-muted-foreground">
