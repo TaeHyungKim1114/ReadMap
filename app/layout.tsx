@@ -42,17 +42,14 @@ export default function RootLayout({
           {children}
         </div>
         <footer className="border-t border-border py-8 text-center bg-background">
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              사이트 관련 모든 문의:{' '}
-              <a href="mailto:thomaskim104@gmail.com" className="text-primary hover:underline">
-                thomaskim104@gmail.com
-              </a>
-            </p>
-            <p className="text-sm text-muted-foreground">
-              자유로운 피드백, 의견 부탁드립니다
-            </p>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            사이트 관련 모든 문의:{' '}
+            <a href="mailto:thomaskim104@gmail.com" className="text-primary hover:underline">
+              thomaskim104@gmail.com
+            </a>
+            {' '}&middot;{' '}
+            자유로운 피드백, 의견 부탁드립니다
+          </p>
         </footer>
         <Toaster />
         {process.env.NODE_ENV === 'production' && <Analytics />}
