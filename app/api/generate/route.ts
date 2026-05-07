@@ -284,24 +284,19 @@ function buildFallbackRoadmap(prompt: string): RoadmapResponse {
   }
 }
 
-async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: boolean, useAiGateway: boolean = false) {
+async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: boolean) {
   const retryHint = isRetry
     ? '\n중요: 이전 결과 품질이 낮았습니다. 반드시 더 유명하고 검증 가능한 실존 도서를 선택하세요.'
     : ''
 
-  // Use Vercel AI Gateway if available, otherwise use OpenAI directly
-  const apiUrl = useAiGateway 
-    ? 'https://api.vercel.ai/v1/chat/completions'
-    : 'https://api.openai.com/v1/chat/completions'
-
-  const openAIResponse = await fetch(apiUrl, {
+  const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: useAiGateway ? 'openai/gpt-4o-mini' : 'gpt-4o-mini',
+      model: 'gpt-4o-mini',
       response_format: { type: 'json_object' },
       messages: [
         {
@@ -386,18 +381,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'prompt is required' }, { status: 400 })
     }
 
-    // Use AI Gateway if available (v0 environment), otherwise fall back to OpenAI API
-    const aiGatewayKey = process.env.AI_GATEWAY_API_KEY
-    const openAiKey = process.env.OPENAI_API_KEY
-    const apiKey = aiGatewayKey || openAiKey || 'YOUR_KEY_HERE'
-    const useAiGateway = !!aiGatewayKey
+    // Use OPENAI_API_KEY from environment
+    const apiKey = process.env.OPENAI_API_KEY || 'YOUR_KEY_HERE'
     
     if (!apiKey || apiKey === 'YOUR_KEY_HERE') {
       return NextResponse.json(
         {
-          error: 'API key is not configured',
+          error: 'OPENAI_API_KEY is not configured',
           guide:
-            'Set OPENAI_API_KEY in .env.local, or use v0 environment with AI_GATEWAY_API_KEY.',
+            'Set OPENAI_API_KEY in .env.local file.',
         },
         { status: 500 }
       )
@@ -406,7 +398,7 @@ export async function POST(request: Request) {
     const attemptErrors: string[] = []
     for (const isRetry of [false, true]) {
       try {
-        const candidate = await requestRoadmapCandidate(apiKey, prompt, isRetry, useAiGateway)
+        const candidate = await requestRoadmapCandidate(apiKey, prompt, isRetry)
         if (!candidate) {
           console.warn('[api/generate] Invalid model output shape', { isRetry })
           attemptErrors.push(`attempt ${isRetry ? 2 : 1}: invalid model output shape`)
