@@ -73,7 +73,7 @@ export function AuthForm() {
             <BookOpen className="h-8 w-8 text-primary" />
           </div>
           <h1 className="text-3xl font-bold text-foreground">ReadMap</h1>
-          <p className="mt-2 text-muted-foreground">부의 성장을 위한 독서 로드맵</p>
+          <p className="mt-2 text-muted-foreground">당신의 맞춤형 독서 로드맵을 만들고, 당신의 목표를 읽어보세요</p>
         </div>
 
         {/* Auth Card */}
