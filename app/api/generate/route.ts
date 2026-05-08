@@ -341,7 +341,7 @@ async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       response_format: { type: 'json_object' },
       messages: [
         {
