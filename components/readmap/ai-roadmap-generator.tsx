@@ -26,6 +26,10 @@ type APINode = {
   author?: string
   coupangSearchUrl?: string
   aladinItemUrl?: string
+  coverUrl?: string
+  price?: number
+  rating?: number
+  reviewCount?: number
   branch?: string
   requiresChoice?: boolean
   position?: { x: number; y: number }
@@ -173,7 +177,7 @@ const normalizeRoadmap = (raw: RoadmapLike, fallbackGoal: string): Roadmap => {
       id,
       title: node.title || node.label || `도서 ${index + 1}`,
       author: node.author || '저자 미정',
-      coverUrl: '',
+      coverUrl: node.coverUrl || '',
       status: incomingCount === 0 ? 'in-progress' : 'locked',
       difficulty: '보통',
       hasReview: false,
@@ -182,10 +186,10 @@ const normalizeRoadmap = (raw: RoadmapLike, fallbackGoal: string): Roadmap => {
         x: toNumber(node.position?.x, 40 + index * 160),
         y: toNumber(node.position?.y, 90),
       },
-      price: 0,
-      usedPrice: 0,
-      rating: 0,
-      reviewCount: 0,
+      price: node.price ?? 0,
+      usedPrice: node.price ?? 0,
+      rating: node.rating ?? 0,
+      reviewCount: node.reviewCount ?? 0,
       coupangSearchUrl: node.coupangSearchUrl || createCoupangSearchUrl(node.title || node.label || `도서 ${index + 1}`),
       aladinItemUrl:
         node.aladinItemUrl ||

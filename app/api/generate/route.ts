@@ -12,6 +12,10 @@ type APINode = {
   author?: string
   coupangSearchUrl?: string
   aladinItemUrl?: string
+  coverUrl?: string
+  price?: number
+  rating?: number
+  reviewCount?: number
   position: { x: number; y: number }
   branch?: string
   requiresChoice?: boolean
@@ -74,6 +78,13 @@ async function verifyRoadmapBooks(
       title: hit.title,
       author: hit.author,
       aladinItemUrl: hit.itemUrl,
+      coverUrl: (hit.coverUrl ?? (node as { coverUrl?: string }).coverUrl ?? '').trim() || undefined,
+      price: hit.priceSales ?? hit.priceStandard ?? (node as { price?: number }).price ?? 0,
+      rating:
+        hit.customerReviewRank10 != null
+          ? Math.max(0, Math.min(5, Number(hit.customerReviewRank10) / 2))
+          : (node as { rating?: number }).rating ?? 0,
+      reviewCount: (node as { reviewCount?: number }).reviewCount ?? 0,
       coupangSearchUrl:
         (node.coupangSearchUrl || '').trim() || createCoupangSearchUrl(hit.title),
     })
@@ -122,6 +133,10 @@ function sanitizeRoadmap(roadmap: RoadmapResponse['roadmap']): RoadmapResponse['
           (node.coupangSearchUrl || '').trim() ||
           createCoupangSearchUrl((node.title || '').trim() || `도서 ${index + 1}`),
         aladinItemUrl: (node.aladinItemUrl || '').trim() || undefined,
+        coverUrl: (node.coverUrl || '').trim() || undefined,
+        price: toNumber((node as { price?: unknown }).price, 0),
+        rating: toNumber((node as { rating?: unknown }).rating, 0),
+        reviewCount: toNumber((node as { reviewCount?: unknown }).reviewCount, 0),
         branch: node.branch,
         requiresChoice: Boolean(node.requiresChoice),
         position: {

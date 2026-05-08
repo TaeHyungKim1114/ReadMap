@@ -7,6 +7,10 @@ type AladinItem = {
   title?: string
   author?: string
   link?: string
+  cover?: string
+  priceStandard?: string | number
+  priceSales?: string | number
+  customerReviewRank?: string | number
 }
 
 type AladinSearchPayload = {
@@ -80,10 +84,27 @@ export async function findBookViaAladin(
   title: string,
   author: string | undefined,
   ttbKey: string
-): Promise<{ title: string; author: string; itemUrl: string } | null> {
+): Promise<{
+  title: string
+  author: string
+  itemUrl: string
+  coverUrl?: string
+  priceSales?: number
+  priceStandard?: number
+  customerReviewRank10?: number
+} | null> {
   const t = title.trim()
   const a = (author ?? '').trim()
   if (!t || !ttbKey.trim()) return null
+
+  const toNumber = (v: unknown): number | undefined => {
+    if (typeof v === 'number' && Number.isFinite(v)) return v
+    if (typeof v === 'string') {
+      const n = Number(v.replace(/[^\d.]/g, ''))
+      if (Number.isFinite(n)) return n
+    }
+    return undefined
+  }
 
   const attempts: { query: string; queryType: string }[] = [
     { query: a ? `${t} ${a}` : t, queryType: 'Keyword' },
@@ -126,8 +147,25 @@ export async function findBookViaAladin(
       const outTitle = stripHtmlTitle((best.title ?? '').trim())
       const outAuthor = (best.author ?? '').trim()
       const itemUrl = normalizeAladinItemUrl(best.link)
-      if (!outTitle || !outAuthor || !itemUrl) continue
-      return { title: outTitle, author: outAuthor, itemUrl }
+    if (!outTitle || !outAuthor || !itemUrl) continue
+
+    const coverUrl =
+      typeof best.cover === 'string' && best.cover.trim()
+        ? best.cover.trim()
+        : undefined
+    const priceSales = toNumber(best.priceSales)
+    const priceStandard = toNumber(best.priceStandard)
+    const customerReviewRank10 = toNumber(best.customerReviewRank)
+
+    return {
+      title: outTitle,
+      author: outAuthor,
+      itemUrl,
+      coverUrl,
+      priceSales,
+      priceStandard,
+      customerReviewRank10,
+    }
     }
   }
 

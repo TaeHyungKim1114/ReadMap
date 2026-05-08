@@ -109,12 +109,21 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
             <div className="p-6">
               {/* Book Cover */}
               <div className="relative mx-auto mb-6 h-64 w-44 overflow-hidden rounded-xl bg-secondary shadow-xl">
-                <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-secondary via-muted to-secondary p-4 text-center">
-                  <span className="text-sm font-bold text-foreground leading-tight">
-                    {book.title}
-                  </span>
-                  <span className="mt-2 text-xs text-muted-foreground">{book.author}</span>
-                </div>
+                {book.coverUrl ? (
+                  <img
+                    src={book.coverUrl}
+                    alt={book.title}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-secondary via-muted to-secondary p-4 text-center">
+                    <span className="text-sm font-bold text-foreground leading-tight">
+                      {book.title}
+                    </span>
+                    <span className="mt-2 text-xs text-muted-foreground">{book.author}</span>
+                  </div>
+                )}
                 
                 {/* Status overlay for locked books */}
                 {book.status === 'locked' && (
@@ -283,7 +292,12 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
                         <BookMarked className="h-5 w-5" />
                         <span className="font-semibold">알라딘에서 구매</span>
                       </div>
-                      <ExternalLink className="h-4 w-4" />
+                      <div className="flex items-center gap-2">
+                        {book.price > 0 && (
+                          <span className="text-lg font-bold">{formatPrice(book.price)}</span>
+                        )}
+                        <ExternalLink className="h-4 w-4" />
+                      </div>
                     </div>
                   </a>
                 </Button>
