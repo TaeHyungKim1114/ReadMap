@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Roadmap, Book, createCoupangSearchUrl, createAladinSearchUrl } from '@/lib/book-data'
 import { mergeBranchInfoFromBooks } from '@/lib/branch-info'
+import { FIXED_READING_GEAR_RECOMMENDED_ITEMS } from '@/lib/fixed-reading-gear'
 import { useToast } from '@/hooks/use-toast'
 
 interface AIRoadmapGeneratorProps {
@@ -247,7 +248,7 @@ const normalizeRoadmap = (raw: RoadmapLike, fallbackGoal: string): Roadmap => {
     totalBooks: spreadBooks.length,
     estimatedDays: spreadBooks.length * 14,
     hasBranches: raw.hasBranches ?? hasBranchTracks,
-    recommendedItems: Array.isArray(raw.recommendedItems) ? raw.recommendedItems : [],
+    recommendedItems: FIXED_READING_GEAR_RECOMMENDED_ITEMS,
     branchInfo: normalizedBranchInfo,
     books: spreadBooks,
   }

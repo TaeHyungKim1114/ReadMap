@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Star, StarHalf, ExternalLink, Check, PenLine, Lock, Edit3, ShoppingCart, BookMarked, Sparkles } from 'lucide-react'
+import { X, Star, StarHalf, ExternalLink, Check, PenLine, Lock, Edit3, BookMarked, Sparkles } from 'lucide-react'
 import confetti from 'canvas-confetti'
-import { Book, createCoupangSearchUrl, createAladinSearchUrl, formatPrice, Difficulty } from '@/lib/book-data'
+import { Book, createAladinSearchUrl, formatPrice, Difficulty } from '@/lib/book-data'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -51,7 +51,6 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: BookDrawerProps) {
-  const coupangUrl = book ? book.coupangSearchUrl || createCoupangSearchUrl(book.title) : ''
   const aladinUrl = book
     ? book.aladinItemUrl || createAladinSearchUrl(`${book.title} ${book.author}`.trim())
     : ''
@@ -246,13 +245,9 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
               {/* Marketplace Rating Section */}
               <div className="mb-6 rounded-xl border border-border bg-secondary/50 p-4">
                 <div className="mb-3 flex items-center gap-2">
-                  <div
-                    className={`flex h-6 items-center rounded px-2 ${
-                      book.aladinItemUrl ? 'bg-[#0066d4]' : 'bg-[#f97316]'
-                    }`}
-                  >
+                  <div className="flex h-6 items-center rounded bg-[#0066d4] px-2">
                     <span className="text-xs font-bold text-white">
-                      {book.aladinItemUrl ? '알라딘' : '쿠팡'}
+                      알라딘
                     </span>
                   </div>
                   <span className="text-sm text-muted-foreground">사용자 평점</span>
@@ -287,8 +282,8 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
                 </ul>
               </div>
 
-              {/* Purchase: Aladin (API product link when available) then Coupang */}
-              <div className="space-y-3">
+              {/* Purchase: Aladin (API product link when available) */}
+              <div>
                 <Button
                   asChild
                   className="w-full h-14 bg-[#0066d4] text-white hover:bg-[#0052a8]"
@@ -309,25 +304,6 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
                     </div>
                   </a>
                 </Button>
-
-                <Button
-                  asChild
-                  className="w-full bg-[#f97316] text-white hover:bg-[#ea580c] h-14"
-                  size="lg"
-                >
-                  <a href={coupangUrl} target="_blank" rel="noopener noreferrer">
-                    <div className="flex w-full items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ShoppingCart className="h-5 w-5" />
-                        <span className="font-semibold">쿠팡 최저가 확인</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold">{formatPrice(book.price)}</span>
-                        <ExternalLink className="h-4 w-4" />
-                      </div>
-                    </div>
-                  </a>
-                </Button>
               </div>
               
               <p className="mt-4 text-center text-xs text-muted-foreground">
@@ -335,9 +311,6 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
               </p>
               <p className="mt-2 text-center text-xs text-muted-foreground">
                 알라딘 버튼은 검색 결과 중 일치 도서의 상품 페이지( Open API 제공 링크 )로 연결됩니다. 링크가 없으면 알라딘 검색으로 이동합니다.
-              </p>
-              <p className="mt-2 text-center text-xs text-gray-400">
-                이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
               </p>
             </div>
           </motion.div>

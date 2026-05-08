@@ -8,8 +8,19 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'ReadMap - 부의 성장을 위한 독서 로드맵',
-  description: '큐레이션된 독서 로드맵으로 부의 축적과 테크 투자를 마스터하세요. 인터랙티브 스킬 트리로 학습 여정을 추적하세요.',
+  title: 'ReadMap',
+  description: '당신의 맞춤형 독서 로드맵을 만들고, 당신의 목표를 읽어보세요.',
+  openGraph: {
+    title: 'ReadMap',
+    description: '당신의 맞춤형 독서 로드맵을 만들고, 당신의 목표를 읽어보세요.',
+    type: 'website',
+    locale: 'ko_KR',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'ReadMap',
+    description: '당신의 맞춤형 독서 로드맵을 만들고, 당신의 목표를 읽어보세요.',
+  },
   generator: 'v0.app',
   icons: {
     icon: [

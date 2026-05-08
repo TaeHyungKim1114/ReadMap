@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { BookOpen, User, Lock, Mail, AlertCircle, Loader2 } from 'lucide-react'
+import { BookOpen, User, Lock, AlertCircle, Loader2, Mail } from 'lucide-react'
 
 type AuthMode = 'login' | 'signup'
 
@@ -15,7 +15,8 @@ export function AuthForm() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [nickname, setNickname] = useState('')
-  const [email, setEmail] = useState('')
+  /** 회원가입 시 연락·프로필용. 로그인에는 사용하지 않음. */
+  const [contactEmail, setContactEmail] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   
@@ -26,7 +27,7 @@ export function AuthForm() {
     setPassword('')
     setConfirmPassword('')
     setNickname('')
-    setEmail('')
+    setContactEmail('')
     setError('')
   }
 
@@ -46,7 +47,13 @@ export function AuthForm() {
         setIsSubmitting(false)
         return
       }
-      const result = await signup(username, password, nickname, email)
+      const trimmedMail = contactEmail.trim().toLowerCase()
+      if (!trimmedMail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedMail)) {
+        setError('연락처 이메일 형식을 확인해 주세요. (로그인에는 사용되지 않습니다.)')
+        setIsSubmitting(false)
+        return
+      }
+      const result = await signup(username, password, nickname, trimmedMail)
       if (!result.success) {
         setError(result.error || '회원가입에 실패했습니다.')
       }
@@ -154,13 +161,17 @@ export function AuthForm() {
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       type="email"
-                      placeholder="이메일"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="연락처 이메일 (로그인과 무관)"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
                       className="pl-10"
+                      autoComplete="email"
                       required
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground [text-wrap:pretty] [word-break:keep-all]">
+                    로그인은 아이디·비밀번호만 사용합니다. 이메일은 프로필·연락용으로만 저장됩니다.
+                  </p>
                 </motion.div>
               )}
             </AnimatePresence>

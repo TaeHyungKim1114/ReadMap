@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { findBookViaAladin } from '@/lib/aladin-book-search'
 import { mergeBranchInfoFromBooks } from '@/lib/branch-info'
+import { FIXED_READING_GEAR_RECOMMENDED_ITEMS } from '@/lib/fixed-reading-gear'
 
 type GenerateRequestBody = {
   prompt?: string
@@ -10,6 +11,7 @@ type APINode = {
   id: string
   title: string
   author?: string
+  isbn?: string
   coupangSearchUrl?: string
   aladinItemUrl?: string
   coverUrl?: string
@@ -77,6 +79,7 @@ async function verifyRoadmapBooks(
       ...node,
       title: hit.title,
       author: hit.author,
+      isbn: hit.isbn ?? (node as { isbn?: string }).isbn,
       aladinItemUrl: hit.itemUrl,
       coverUrl: (hit.coverUrl ?? (node as { coverUrl?: string }).coverUrl ?? '').trim() || undefined,
       price: hit.priceSales ?? hit.priceStandard ?? (node as { price?: number }).price ?? 0,
@@ -129,6 +132,7 @@ function sanitizeRoadmap(roadmap: RoadmapResponse['roadmap']): RoadmapResponse['
         id,
         title: (node.title || '').trim() || `도서 ${index + 1}`,
         author: (node.author || '').trim() || '저자 미상',
+        isbn: (node.isbn || '').trim() || undefined,
         coupangSearchUrl:
           (node.coupangSearchUrl || '').trim() ||
           createCoupangSearchUrl((node.title || '').trim() || `도서 ${index + 1}`),
@@ -215,27 +219,12 @@ function sanitizeRoadmap(roadmap: RoadmapResponse['roadmap']): RoadmapResponse['
     topicHint: (roadmap.title || '').trim() || undefined,
   })
 
-  const normalizedRecommendedItems = Array.isArray(roadmap.recommendedItems)
-    ? roadmap.recommendedItems
-        .map((item, index) => {
-          const name = (item.name || '').trim()
-          if (!name) return null
-          return {
-            id: (item.id || `gear-${index + 1}`).trim() || `gear-${index + 1}`,
-            name,
-            reason: (item.reason || '').trim() || '학습 효율 향상을 위한 추천 장비입니다.',
-            coupangSearchUrl: (item.coupangSearchUrl || '').trim() || createCoupangSearchUrl(name),
-          }
-        })
-        .filter((item): item is NonNullable<typeof item> => item !== null)
-    : []
-
   return {
     ...roadmap,
     nodes: cappedNodes,
     edges: sanitizedEdges,
     hasBranches: roadmap.hasBranches ?? inferredTrackIds.length > 0,
-    recommendedItems: normalizedRecommendedItems,
+    recommendedItems: FIXED_READING_GEAR_RECOMMENDED_ITEMS,
     branchInfo: normalizedBranchInfo,
   }
 }
@@ -254,20 +243,7 @@ function buildFallbackRoadmap(prompt: string): RoadmapResponse {
         { source: 'step-1', target: 'step-2' },
         { source: 'step-2', target: 'step-3' },
       ],
-      recommendedItems: [
-        {
-          id: 'gear-1',
-          name: `${prompt} 입문서 세트`,
-          reason: '핵심 개념을 빠르게 훑고 학습 계획을 세우는 데 도움이 됩니다.',
-          coupangSearchUrl: createCoupangSearchUrl(`${prompt} 입문서`),
-        },
-        {
-          id: 'gear-2',
-          name: '노트북 거치대',
-          reason: '장시간 학습 시 자세를 안정적으로 유지해 학습 피로를 줄여줍니다.',
-          coupangSearchUrl: createCoupangSearchUrl('노트북 거치대'),
-        },
-      ],
+      recommendedItems: FIXED_READING_GEAR_RECOMMENDED_ITEMS,
     },
   }
 }
@@ -316,10 +292,10 @@ async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: 
                 'Output title and author exactly as shoppers would search on Aladin Korea (표기 통일·띄어쓰기·부제 정도는 현실적인 범위 안에서 검색 매칭이 잘 되게).',
                 'Pick nationally recognizable bestsellers and steady sellers that always return in Aladin Keyword/Title search.',
                 'Each node MUST include non-empty id, title, author, coupangSearchUrl, and position.',
-                'Also include roadmap.recommendedItems (2-5 items) for essential learning gear/electronics/stationery.',
-                'Every coupangSearchUrl MUST use: https://link.coupang.com/a/custom-url?q={query}',
+                'Do NOT include roadmap.recommendedItems; the server injects fixed reading-gear affiliate links separately.',
+                'Every node coupangSearchUrl MUST use: https://link.coupang.com/a/custom-url?q={query}',
                 'Before finalizing, self-check: real books only, Korean edition preference, smooth difficulty progression, valid prerequisite edges, complete Coupang URLs, EVERY book realistically findable via Aladin search.',
-                'Return ONLY valid JSON with this shape: {"roadmap":{"title":string,"description":string,"hasBranches":boolean,"branchInfo":{"branchPoint":string,"tracks":[{"id":string,"name":string,"description":string}]},"nodes":[{"id":string,"title":string,"author":string,"coupangSearchUrl":string,"branch":string,"requiresChoice":boolean,"position":{"x":number,"y":number}}],"edges":[{"source":string,"target":string}],"recommendedItems":[{"id":string,"name":string,"reason":string,"coupangSearchUrl":string}]}}',
+                'Return ONLY valid JSON with this shape: {"roadmap":{"title":string,"description":string,"hasBranches":boolean,"branchInfo":{"branchPoint":string,"tracks":[{"id":string,"name":string,"description":string}]},"nodes":[{"id":string,"title":string,"author":string,"coupangSearchUrl":string,"branch":string,"requiresChoice":boolean,"position":{"x":number,"y":number}}],"edges":[{"source":string,"target":string}]}}',
               ].join(' '),
             },
           ],
@@ -346,8 +322,7 @@ async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: 
                 '분기 이후 각 도서 노드의 branch 값은 branchInfo.tracks[].id와 정확히 일치해야 해.',
                 '트랙 수와 트랙당 권수를 조절해 전체 노드는 6~9개로 맞추고, 분기 이후 각 트랙에는 최대 2권만 배치해줘.',
                 '각 노드는 반드시 id, title, author, coupangSearchUrl, position(x,y)을 포함해줘.',
-                '로드맵 하단에 보여줄 필수 장비/교구/전자제품 추천도 2~5개 포함하고 recommendedItems에 넣어줘.',
-                '추천 상품은 반드시 쿠팡에서 검색 가능한 실존 상품으로 작성하고 coupangSearchUrl 필드를 채워줘.',
+                'recommendedItems는 넣지 말 것(독서용품 링크는 서버에서 고정 삽입).',
                 '불확실한 책은 제외하고, 더 유명하고 검증된 대체 도서를 선택해줘.',
                 retryHint,
               ].join('\n'),

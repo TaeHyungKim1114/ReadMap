@@ -1,9 +1,9 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Book, Review, createCoupangSearchUrl, createAladinSearchUrl, formatDate, formatPrice } from '@/lib/book-data'
+import { Book, Review, createAladinSearchUrl, formatDate, formatPrice } from '@/lib/book-data'
 import { useAuth } from '@/lib/auth-context'
-import { Star, BookOpen, Calendar, ExternalLink, ShoppingCart } from 'lucide-react'
+import { Star, BookOpen, Calendar, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface MyLibraryViewProps {
@@ -137,7 +137,7 @@ export function MyLibraryView({ completedBooks, myReviews }: MyLibraryViewProps)
                       </div>
                     )}
 
-                    {/* 쿠팡 링크 */}
+                    {/* 구매 링크 */}
                     <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
                       <div className="mr-auto text-sm">
                         <span className="text-muted-foreground">구매가: </span>
@@ -150,17 +150,6 @@ export function MyLibraryView({ completedBooks, myReviews }: MyLibraryViewProps)
                           rel="noopener noreferrer"
                         >
                           알라딘
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </Button>
-                      <Button asChild variant="outline" size="sm" className="gap-2">
-                        <a
-                          href={book.coupangSearchUrl || createCoupangSearchUrl(book.title)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ShoppingCart className="h-3 w-3" />
-                          쿠팡
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </Button>

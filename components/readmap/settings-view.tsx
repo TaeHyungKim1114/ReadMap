@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,14 @@ export function SettingsView() {
   
   // 프로필 수정
   const [nickname, setNickname] = useState(user?.nickname || '')
+  const [contactEmail, setContactEmail] = useState(user?.email || '')
   const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    setNickname(user.nickname)
+    setContactEmail(user.email ?? '')
+  }, [user])
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
 
   // 비밀번호 변경
@@ -34,7 +41,7 @@ export function SettingsView() {
       return
     }
 
-    const result = await updateProfile({ nickname })
+    const result = await updateProfile({ nickname, contactEmail })
     
     if (result.success) {
       setProfileMessage({ type: 'success', text: '프로필이 업데이트되었습니다.' })
@@ -94,7 +101,7 @@ export function SettingsView() {
             <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Mail className="h-3 w-3" />
-                {user?.email}
+                {user?.email || '연락 이메일 미등록'}
               </span>
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
@@ -167,6 +174,26 @@ export function SettingsView() {
                   placeholder="닉네임을 입력하세요"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">
+                연락처 이메일
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  className="pl-10"
+                  placeholder="example@domain.com"
+                />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                로그인에는 사용되지 않으며, 안내용으로만 저장됩니다. 비워 두면 삭제됩니다.
+              </p>
             </div>
 
             <div>

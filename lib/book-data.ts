@@ -45,6 +45,10 @@ export interface Book {
 
 export interface Roadmap {
   id: string
+  /** 로드맵 생성 시각(정렬 기준). */
+  createdAt?: number
+  /** true면 로드맵 목록 최상단에 고정. */
+  isPinned?: boolean
   title: string
   description: string
   category: string

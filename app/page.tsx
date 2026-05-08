@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { AppSidebar } from '@/components/readmap/app-sidebar'
 import { SearchBar } from '@/components/readmap/search-bar'
 import { ProgressBar } from '@/components/readmap/progress-bar'
@@ -18,10 +18,12 @@ import { AuthProvider, useAuth } from '@/lib/auth-context'
 import { roadmaps as initialRoadmaps, sampleReviews, type Book, type Review, type Roadmap } from '@/lib/book-data'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Edit3, ExternalLink, Save, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, Edit3, ExternalLink, Save, ShoppingCart } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { createCoupangSearchUrl, createAladinSearchUrl } from '@/lib/book-data'
 import { mergeBranchInfoFromBooks } from '@/lib/branch-info'
+import { FIXED_READING_GEAR_RECOMMENDED_ITEMS } from '@/lib/fixed-reading-gear'
+import { CoupangPartnersDisclaimer } from '@/components/readmap/coupang-partners-disclaimer'
 
 type ViewMode = 'roadmap' | 'community' | 'select-roadmap' | 'my-library' | 'settings'
 type APINode = {
@@ -29,6 +31,7 @@ type APINode = {
   title?: string
   label?: string
   author?: string
+  isbn?: string
   coupangSearchUrl?: string
   aladinItemUrl?: string
   coverUrl?: string
@@ -52,6 +55,85 @@ type PersistedUserData = {
   roadmaps: Roadmap[]
   reviews: Review[]
   activeRoadmapId: string | null
+}
+
+function sortRoadmapsForDisplay(items: Roadmap[]): Roadmap[] {
+  return items
+    .map((roadmap, index) => ({ roadmap, index }))
+    .sort((a, b) => {
+      if (Boolean(a.roadmap.isPinned) !== Boolean(b.roadmap.isPinned)) {
+        return a.roadmap.isPinned ? -1 : 1
+      }
+      const aCreatedAt = typeof a.roadmap.createdAt === 'number' ? a.roadmap.createdAt : Number.MIN_SAFE_INTEGER
+      const bCreatedAt = typeof b.roadmap.createdAt === 'number' ? b.roadmap.createdAt : Number.MIN_SAFE_INTEGER
+      if (aCreatedAt !== bCreatedAt) {
+        return bCreatedAt - aCreatedAt
+      }
+      return a.index - b.index
+    })
+    .map((entry) => entry.roadmap)
+}
+
+async function enrichRoadmapsWithAladinLinks(roadmaps: Roadmap[]): Promise<Roadmap[]> {
+  const targets = roadmaps.flatMap((roadmap) =>
+    roadmap.books
+      .filter((book) => !book.aladinItemUrl)
+      .map((book) => ({
+        roadmapId: roadmap.id,
+        bookId: book.id,
+        title: book.title,
+        author: book.author,
+      }))
+  )
+
+  if (targets.length === 0) return roadmaps
+
+  try {
+    const response = await fetch('/api/aladin-links', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ books: targets }),
+    })
+    if (!response.ok) return roadmaps
+
+    const payload = (await response.json()) as {
+      results?: Array<{
+        roadmapId: string
+        bookId: string
+        aladinItemUrl: string
+        isbn?: string
+        title?: string
+        author?: string
+        coverUrl?: string
+        price?: number
+        rating?: number
+      }>
+    }
+    const results = Array.isArray(payload.results) ? payload.results : []
+    if (results.length === 0) return roadmaps
+
+    const byKey = new Map(results.map((row) => [`${row.roadmapId}\t${row.bookId}`, row] as const))
+    return roadmaps.map((roadmap) => ({
+      ...roadmap,
+      books: roadmap.books.map((book) => {
+        const hit = byKey.get(`${roadmap.id}\t${book.id}`)
+        if (!hit) return book
+        return {
+          ...book,
+          title: hit.title || book.title,
+          author: hit.author || book.author,
+          isbn: hit.isbn || book.isbn,
+          coverUrl: hit.coverUrl || book.coverUrl,
+          aladinItemUrl: hit.aladinItemUrl,
+          price: typeof hit.price === 'number' ? hit.price : book.price,
+          usedPrice: typeof hit.price === 'number' ? hit.price : book.usedPrice,
+          rating: typeof hit.rating === 'number' ? hit.rating : book.rating,
+        }
+      }),
+    }))
+  } catch {
+    return roadmaps
+  }
 }
 
 function normalizePersistedUserData(data: PersistedUserData): PersistedUserData {
@@ -131,9 +213,26 @@ function MainApp() {
   const [viewMode, setViewMode] = useState<ViewMode>('select-roadmap')
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
   const [showAIGenerator, setShowAIGenerator] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [completedBookForShare, setCompletedBookForShare] = useState<Book | null>(null)
   const [hasLoadedUserData, setHasLoadedUserData] = useState(false)
+  const initializedUserIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!user) {
+      initializedUserIdRef.current = null
+      return
+    }
+    if (initializedUserIdRef.current !== user.id) {
+      initializedUserIdRef.current = user.id
+      setViewMode('select-roadmap')
+      setIsSidebarOpen(false)
+      setShowAIGenerator(false)
+      setSelectedBook(null)
+      setBookToReview(null)
+    }
+  }, [user])
 
   useEffect(() => {
     if (!user) {
@@ -150,9 +249,10 @@ function MainApp() {
       if (isCancelled) return
 
       if (persisted) {
-        const nextRoadmaps = Array.isArray(persisted.roadmaps) && persisted.roadmaps.length > 0
+        const sourceRoadmaps = Array.isArray(persisted.roadmaps) && persisted.roadmaps.length > 0
           ? persisted.roadmaps
           : initialRoadmaps
+        const nextRoadmaps = await enrichRoadmapsWithAladinLinks(sourceRoadmaps)
         const nextActiveRoadmapId =
           persisted.activeRoadmapId && nextRoadmaps.some((r) => r.id === persisted.activeRoadmapId)
             ? persisted.activeRoadmapId
@@ -163,9 +263,10 @@ function MainApp() {
         setActiveRoadmapId(nextActiveRoadmapId)
         setSelectedBranch(null)
       } else {
-        setRoadmaps(initialRoadmaps)
+        const enrichedRoadmaps = await enrichRoadmapsWithAladinLinks(initialRoadmaps)
+        setRoadmaps(enrichedRoadmaps)
         setReviews(sampleReviews)
-        setActiveRoadmapId(initialRoadmaps[0].id)
+        setActiveRoadmapId(enrichedRoadmaps[0].id)
         setSelectedBranch(null)
       }
 
@@ -193,6 +294,7 @@ function MainApp() {
     roadmaps.find(r => r.id === activeRoadmapId) ?? roadmaps[0],
     [roadmaps, activeRoadmapId]
   )
+  const sortedRoadmaps = useMemo(() => sortRoadmapsForDisplay(roadmaps), [roadmaps])
 
   const filteredBooks = activeRoadmap.books.filter(
     (book) =>
@@ -329,8 +431,13 @@ function MainApp() {
   }
 
   const handleAIRoadmapGenerated = (newRoadmap: Roadmap) => {
-    setRoadmaps(prev => [...prev, newRoadmap])
-    setActiveRoadmapId(newRoadmap.id)
+    const roadmapWithMeta: Roadmap = {
+      ...newRoadmap,
+      isPinned: newRoadmap.isPinned ?? false,
+      createdAt: typeof newRoadmap.createdAt === 'number' ? newRoadmap.createdAt : Date.now(),
+    }
+    setRoadmaps(prev => [roadmapWithMeta, ...prev.filter((roadmap) => roadmap.id !== roadmapWithMeta.id)])
+    setActiveRoadmapId(roadmapWithMeta.id)
     setSelectedBranch(null)
     setViewMode('roadmap')
     setIsEditMode(true) // AI 생성 후 편집 모드로 진입
@@ -380,7 +487,7 @@ function MainApp() {
         aladinItemUrl:
           node.aladinItemUrl ||
           createAladinSearchUrl(`${node.title || node.label || `도서 ${index + 1}`} ${node.author || ''}`.trim()),
-        isbn: '',
+        isbn: node.isbn || '',
         branch: node.branch,
         requiresChoice: node.requiresChoice,
         prerequisiteIds: edges
@@ -424,6 +531,8 @@ function MainApp() {
 
     return {
       id: raw.id || `generated-${Date.now()}`,
+      createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : Date.now(),
+      isPinned: Boolean(raw.isPinned),
       title: raw.title || 'AI 생성 로드맵',
       description: raw.description || 'AI가 생성한 로드맵입니다.',
       category: raw.category || 'AI',
@@ -436,7 +545,7 @@ function MainApp() {
       totalBooks: raw.totalBooks ?? spreadBooks.length,
       estimatedDays: raw.estimatedDays,
       hasBranches: raw.hasBranches ?? hasBranchTracks,
-      recommendedItems: Array.isArray(raw.recommendedItems) ? raw.recommendedItems : [],
+      recommendedItems: FIXED_READING_GEAR_RECOMMENDED_ITEMS,
       branchInfo: normalizedBranchInfo,
     }
   }
@@ -484,11 +593,9 @@ function MainApp() {
         setRoadmaps(prev => {
           const exists = prev.some(roadmap => roadmap.id === firstRoadmap.id)
           if (exists) {
-            return prev.map(roadmap =>
-              roadmap.id === firstRoadmap.id ? firstRoadmap : roadmap
-            )
+            return [firstRoadmap, ...prev.filter((roadmap) => roadmap.id !== firstRoadmap.id)]
           }
-          return [...prev, firstRoadmap]
+          return [firstRoadmap, ...prev]
         })
         setActiveRoadmapId(firstRoadmap.id)
         setSelectedBranch(null)
@@ -509,11 +616,9 @@ function MainApp() {
       setRoadmaps(prev => {
         const exists = prev.some(roadmap => roadmap.id === generatedRoadmap.id)
         if (exists) {
-          return prev.map(roadmap =>
-            roadmap.id === generatedRoadmap.id ? generatedRoadmap : roadmap
-          )
+          return [generatedRoadmap, ...prev.filter((roadmap) => roadmap.id !== generatedRoadmap.id)]
         }
-        return [...prev, generatedRoadmap]
+        return [generatedRoadmap, ...prev]
       })
       setActiveRoadmapId(generatedRoadmap.id)
       setSelectedBranch(null)
@@ -636,15 +741,27 @@ function MainApp() {
       return
     }
 
-    setRoadmaps(prev => prev.filter(r => r.id !== roadmapId))
-    
-    // 삭제된 로드맵이 현재 활성화된 로드맵이면 다른 로드맵으로 전환
-    if (activeRoadmapId === roadmapId) {
-      const remaining = roadmaps.filter(r => r.id !== roadmapId)
-      if (remaining.length > 0) {
-        setActiveRoadmapId(remaining[0].id)
+    setRoadmaps(prev => {
+      const remaining = prev.filter((r) => r.id !== roadmapId)
+      if (activeRoadmapId === roadmapId && remaining.length > 0) {
+        setActiveRoadmapId(sortRoadmapsForDisplay(remaining)[0].id)
       }
-    }
+      return remaining
+    })
+  }
+
+  const handleToggleRoadmapPin = (roadmapId: string) => {
+    setRoadmaps((prev) =>
+      prev.map((roadmap) =>
+        roadmap.id === roadmapId
+          ? {
+              ...roadmap,
+              isPinned: !roadmap.isPinned,
+              createdAt: typeof roadmap.createdAt === 'number' ? roadmap.createdAt : Date.now(),
+            }
+          : roadmap
+      )
+    )
   }
 
   const getViewTitle = () => {
@@ -687,6 +804,8 @@ function MainApp() {
       {/* Sidebar */}
       <AppSidebar 
         onNavigate={handleNavigation} 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
         activeSection={
           viewMode === 'community' ? '#community' : 
           viewMode === 'select-roadmap' ? '#explore' : 
@@ -699,7 +818,17 @@ function MainApp() {
       />
 
       {/* Main Content */}
-      <main className="ml-64 flex-1 p-8">
+      <main className="flex-1 p-4 pt-16 md:ml-64 md:p-8 md:pt-8">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => setIsSidebarOpen(true)}
+          className="fixed left-4 top-4 z-20 md:hidden"
+          aria-label="메뉴 열기"
+        >
+          <span className="text-base font-semibold">☰</span>
+        </Button>
         {/* Header with Search */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
@@ -708,6 +837,18 @@ function MainApp() {
         >
           <div className="mb-6 flex items-center justify-between">
             <div>
+              {viewMode === 'roadmap' && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode('select-roadmap')}
+                  className="mb-2 -ml-2 gap-1 text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  로드맵 목록으로
+                </Button>
+              )}
               <h1 className="text-3xl font-bold text-foreground">
                 {getViewTitle()}
               </h1>
@@ -808,9 +949,8 @@ function MainApp() {
               className="mt-6 rounded-xl border border-border bg-card p-4"
             >
               <h3 className="mb-3 text-sm font-semibold text-foreground">이 학습을 시작하기 위해 필요한 필수 장비</h3>
-              {(activeRoadmap.recommendedItems?.length ?? 0) > 0 ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {activeRoadmap.recommendedItems?.map((item) => (
+              <div className="grid gap-3 md:grid-cols-2">
+                  {FIXED_READING_GEAR_RECOMMENDED_ITEMS.map((item) => (
                     <a
                       key={item.id}
                       href={item.coupangSearchUrl}
@@ -830,9 +970,7 @@ function MainApp() {
                     </a>
                   ))}
                 </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">AI가 추천한 장비가 아직 없습니다.</p>
-              )}
+              <CoupangPartnersDisclaimer className="mt-3 text-[11px] leading-relaxed" />
             </motion.section>
           </>
         )}
@@ -843,11 +981,12 @@ function MainApp() {
 
         {viewMode === 'select-roadmap' && (
           <RoadmapSelector 
-            roadmaps={roadmaps} 
+            roadmaps={sortedRoadmaps} 
             activeRoadmapId={activeRoadmapId}
             onSelect={handleRoadmapSelect}
             onOpenAIGenerator={() => setShowAIGenerator(true)}
             onDelete={handleDeleteRoadmap}
+            onTogglePin={handleToggleRoadmapPin}
           />
         )}
 

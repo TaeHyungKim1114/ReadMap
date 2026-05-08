@@ -8,6 +8,8 @@ type AladinItem = {
   author?: string
   link?: string
   cover?: string
+  isbn?: string
+  isbn13?: string
   priceStandard?: string | number
   priceSales?: string | number
   customerReviewRank?: string | number
@@ -62,6 +64,12 @@ function normalizeAladinItemUrl(link: unknown): string | undefined {
   return undefined
 }
 
+function normalizeIsbn(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const digits = value.replace(/[^\dXx]/g, '')
+  return digits.length >= 10 ? digits : undefined
+}
+
 function scoreItem(item: AladinItem, wantTitle: string, wantAuthor: string): number {
   const title = stripHtmlTitle((item.title ?? '').trim())
   const author = (item.author ?? '').trim()
@@ -88,6 +96,7 @@ export async function findBookViaAladin(
   title: string
   author: string
   itemUrl: string
+  isbn?: string
   coverUrl?: string
   priceSales?: number
   priceStandard?: number
@@ -153,6 +162,7 @@ export async function findBookViaAladin(
       typeof best.cover === 'string' && best.cover.trim()
         ? best.cover.trim()
         : undefined
+    const isbn = normalizeIsbn(best.isbn13) ?? normalizeIsbn(best.isbn)
     const priceSales = toNumber(best.priceSales)
     const priceStandard = toNumber(best.priceStandard)
     const customerReviewRank10 = toNumber(best.customerReviewRank)
@@ -161,6 +171,7 @@ export async function findBookViaAladin(
       title: outTitle,
       author: outAuthor,
       itemUrl,
+      isbn,
       coverUrl,
       priceSales,
       priceStandard,

@@ -1,6 +1,6 @@
 'use client'
 
-import { Map, Library, Users, Settings, BookOpen, TrendingUp } from 'lucide-react'
+import { Map, Library, Users, Settings, BookOpen, TrendingUp, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -22,18 +22,45 @@ interface AppSidebarProps {
   activeSection?: string
   userName?: string
   activeRoadmapTitle?: string
+  isOpen?: boolean
+  onClose?: () => void
 }
 
 export function AppSidebar({ 
   onNavigate, 
   activeSection = '#explore',
   userName = '독서가',
-  activeRoadmapTitle = '로드맵을 선택하세요'
+  activeRoadmapTitle = '로드맵을 선택하세요',
+  isOpen = false,
+  onClose,
 }: AppSidebarProps) {
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-border bg-card">
+    <>
+      {isOpen && (
+        <button
+          type="button"
+          aria-label="사이드바 닫기"
+          onClick={onClose}
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+        />
+      )}
+      <aside
+        className={cn(
+          'fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-border bg-card transition-transform duration-200',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+          'md:translate-x-0'
+        )}
+      >
       {/* User Profile Header */}
       <div className="flex h-16 items-center gap-3 border-b border-border px-6">
+        <button
+          type="button"
+          aria-label="사이드바 닫기"
+          onClick={onClose}
+          className="mr-1 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground md:hidden"
+        >
+          <X className="h-4 w-4" />
+        </button>
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
           <BookOpen className="h-5 w-5 text-primary-foreground" />
         </div>
@@ -52,7 +79,10 @@ export function AppSidebar({
           return (
             <motion.button
               key={item.label}
-              onClick={() => onNavigate?.(item.href)}
+              onClick={() => {
+                onNavigate?.(item.href)
+                onClose?.()
+              }}
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
               className={cn(
@@ -90,6 +120,7 @@ export function AppSidebar({
           </div>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   )
 }

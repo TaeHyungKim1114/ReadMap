@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ChevronRight, BookOpen, Users, Sparkles, Trash2 } from 'lucide-react'
+import { ChevronRight, BookOpen, Users, Sparkles, Trash2, Pin, PinOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Roadmap } from '@/lib/book-data'
 import { cn } from '@/lib/utils'
@@ -12,6 +12,7 @@ interface RoadmapSelectorProps {
   onSelect: (roadmapId: string) => void
   onOpenAIGenerator: () => void
   onDelete: (roadmapId: string) => void
+  onTogglePin: (roadmapId: string) => void
 }
 
 function RoadmapCard({ 
@@ -19,12 +20,14 @@ function RoadmapCard({
   isActive, 
   onClick,
   onDelete,
+  onTogglePin,
   index 
 }: { 
   roadmap: Roadmap
   isActive: boolean
   onClick: () => void
   onDelete: () => void
+  onTogglePin: () => void
   index: number
 }) {
   const completedBooks = roadmap.books.filter(b => b.status === 'completed').length
@@ -58,6 +61,17 @@ function RoadmapCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div
+            role="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onTogglePin()
+            }}
+            className="cursor-pointer rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+            title={roadmap.isPinned ? '상단 고정 해제' : '상단 고정'}
+          >
+            {roadmap.isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+          </div>
           <div
             role="button"
             onClick={(e) => {
@@ -111,7 +125,7 @@ function RoadmapCard({
   )
 }
 
-export function RoadmapSelector({ roadmaps, activeRoadmapId, onSelect, onOpenAIGenerator, onDelete }: RoadmapSelectorProps) {
+export function RoadmapSelector({ roadmaps, activeRoadmapId, onSelect, onOpenAIGenerator, onDelete, onTogglePin }: RoadmapSelectorProps) {
   return (
     <div className="space-y-6">
       {/* AI 로드맵 생성 버튼 */}
@@ -144,6 +158,7 @@ export function RoadmapSelector({ roadmaps, activeRoadmapId, onSelect, onOpenAIG
             isActive={activeRoadmapId === roadmap.id}
             onClick={() => onSelect(roadmap.id)}
             onDelete={() => onDelete(roadmap.id)}
+            onTogglePin={() => onTogglePin(roadmap.id)}
             index={index}
           />
         ))}
