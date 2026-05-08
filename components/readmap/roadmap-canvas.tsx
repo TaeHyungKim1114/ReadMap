@@ -316,7 +316,7 @@ function BranchSelector({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="absolute right-4 top-4 z-30 max-h-[min(70vh,28rem)] w-[min(18rem,calc(100%-6rem))] overflow-y-auto rounded-xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur-sm"
+      className="absolute right-4 top-14 z-30 max-h-[min(70vh,28rem)] w-[min(18rem,calc(100%-6rem))] overflow-y-auto rounded-xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur-sm"
     >
       <div className="mb-2 flex items-center gap-2 text-xs font-medium text-foreground">
         <GitBranch className="h-3.5 w-3.5 text-primary" />
