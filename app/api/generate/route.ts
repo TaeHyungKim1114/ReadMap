@@ -133,18 +133,29 @@ async function verifyRoadmapBooks(roadmap: RoadmapResponse['roadmap']) {
   const verifiedNodes: APINode[] = []
   for (const node of roadmap.nodes) {
     const realBook = await findRealBook(node.title, node.author)
-    if (!realBook) continue
+    const title = (realBook?.title ?? node.title ?? '').trim() || node.title
+    const author = (realBook?.author ?? node.author ?? '').trim() || '저자 미상'
     verifiedNodes.push({
       ...node,
-      title: realBook.title,
-      author: realBook.author,
-      coupangSearchUrl: node.coupangSearchUrl || createCoupangSearchUrl(realBook.title),
+      title,
+      author,
+      coupangSearchUrl:
+        (node.coupangSearchUrl || '').trim() ||
+        createCoupangSearchUrl(title || node.title || '도서'),
     })
   }
-  const verifiedNodeIds = new Set(verifiedNodes.map(node => node.id))
-  const verifiedEdges = roadmap.edges.filter(
+
+  const verifiedNodeIds = new Set(verifiedNodes.map((node) => node.id))
+  let verifiedEdges = roadmap.edges.filter(
     (edge) => verifiedNodeIds.has(edge.source) && verifiedNodeIds.has(edge.target)
   )
+
+  if (verifiedEdges.length === 0 && verifiedNodes.length > 1) {
+    for (let i = 1; i < verifiedNodes.length; i++) {
+      verifiedEdges.push({ source: verifiedNodes[i - 1].id, target: verifiedNodes[i].id })
+    }
+    console.warn('[api/generate] No valid edges after verification; chained nodes in API order')
+  }
 
   return {
     ...roadmap,
@@ -230,9 +241,21 @@ function sanitizeRoadmap(roadmap: RoadmapResponse['roadmap']): RoadmapResponse['
   }
 
   const nodeIds = new Set(cappedNodes.map((node) => node.id))
-  const sanitizedEdges = cappedEdges.filter(
-    (edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target)
-  )
+  let sanitizedEdges = cappedEdges.filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target))
+
+  const dedupe = new Set<string>()
+  sanitizedEdges = sanitizedEdges.filter((e) => {
+    const k = `${e.source}\t${e.target}`
+    if (dedupe.has(k)) return false
+    dedupe.add(k)
+    return true
+  })
+
+  if (sanitizedEdges.length === 0 && cappedNodes.length > 1) {
+    for (let i = 1; i < cappedNodes.length; i++) {
+      sanitizedEdges.push({ source: cappedNodes[i - 1].id, target: cappedNodes[i].id })
+    }
+  }
   const inferredTrackIds = Array.from(
     new Set(cappedNodes.map((node) => node.branch).filter(Boolean))
   ) as string[]

@@ -73,18 +73,22 @@ export async function findBookViaAladin(
   const a = (author ?? '').trim()
   if (!t || !ttbKey.trim()) return null
 
-  const queries = [a ? `${t} ${a}` : t, t]
+  const attempts: { query: string; queryType: string }[] = [
+    { query: a ? `${t} ${a}` : t, queryType: 'Keyword' },
+    { query: t, queryType: 'Title' },
+    { query: t, queryType: 'Keyword' },
+  ]
   const seen = new Set<string>()
 
-  for (const q of queries) {
-    const key = q.trim()
-    if (!key || seen.has(key)) continue
+  for (const { query: q, queryType } of attempts) {
+    const key = `${queryType}:${q.trim()}`
+    if (!q.trim() || seen.has(key)) continue
     seen.add(key)
 
     const url = new URL('https://www.aladin.co.kr/ttb/api/ItemSearch.aspx')
     url.searchParams.set('ttbkey', ttbKey.trim())
-    url.searchParams.set('Query', key)
-    url.searchParams.set('QueryType', 'Keyword')
+    url.searchParams.set('Query', q.trim())
+    url.searchParams.set('QueryType', queryType)
     url.searchParams.set('MaxResults', '10')
     url.searchParams.set('start', '1')
     url.searchParams.set('SearchTarget', 'Book')

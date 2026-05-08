@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import confetti from 'canvas-confetti'
 
 /** Edge anchors and canvas bounds; keep in sync with BookNode visual layout */
-const BOOK_NODE_METRICS = { width: 72, height: 122 }
+const BOOK_NODE_METRICS = { width: 72, height: 108 }
 
 interface RoadmapCanvasProps {
   books: Book[]
@@ -50,7 +50,6 @@ function BookNode({
   onDelete,
   onMarkComplete,
   trackColor,
-  trackDisplay,
 }: {
   book: Book
   onClick: () => void
@@ -61,8 +60,6 @@ function BookNode({
   onDelete?: () => void
   onMarkComplete?: () => void
   trackColor?: string
-  /** e.g. "A · 기술 심화" — shown inside the card to avoid overlapping neighbor nodes */
-  trackDisplay?: string | null
 }) {
   const statusStyles: Record<BookStatus, string> = {
     completed: 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(52,211,153,0.4)]',
@@ -143,10 +140,18 @@ function BookNode({
 
       <div className="relative h-20 w-14">
         <div className="h-full w-full overflow-hidden rounded-md bg-secondary">
-          <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-secondary to-muted p-1 text-center">
+          <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-secondary to-muted p-1 text-center">
             <span className="text-[9px] font-semibold text-foreground leading-tight line-clamp-3">
               {book.title}
             </span>
+            {book.branch ? (
+              <span
+                className="absolute bottom-0.5 left-1/2 -translate-x-1/2 rounded px-1 text-[7px] font-bold text-white"
+                style={{ backgroundColor: trackColor ?? '#3b82f6' }}
+              >
+                {book.branch}
+              </span>
+            ) : null}
           </div>
         </div>
         
@@ -174,16 +179,6 @@ function BookNode({
           </motion.div>
         )}
       </div>
-
-      {book.branch && trackDisplay ? (
-        <p
-          className="mt-0.5 max-w-14 text-center text-[7px] font-semibold leading-tight text-foreground/90 line-clamp-2"
-          style={trackColor ? { color: trackColor } : undefined}
-          title={trackDisplay}
-        >
-          {trackDisplay}
-        </p>
-      ) : null}
 
       <p className="mt-0.5 max-w-14 text-center text-[8px] font-medium text-foreground line-clamp-2">
         {book.author}
@@ -321,7 +316,7 @@ function BranchSelector({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="absolute left-6 top-6 z-20 rounded-xl border border-border bg-card/95 p-3 backdrop-blur-sm shadow-lg"
+      className="absolute right-4 top-4 z-30 max-h-[min(70vh,28rem)] w-[min(18rem,calc(100%-6rem))] overflow-y-auto rounded-xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur-sm"
     >
       <div className="mb-2 flex items-center gap-2 text-xs font-medium text-foreground">
         <GitBranch className="h-3.5 w-3.5 text-primary" />
@@ -352,7 +347,7 @@ function BranchSelector({
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-foreground">{track.name}</p>
                   <p
-                    className="mt-1 text-[11px] leading-snug text-foreground/85 line-clamp-4"
+                    className="mt-1 text-[10px] leading-snug text-muted-foreground line-clamp-5"
                     title={track.description}
                   >
                     {track.description}
@@ -465,7 +460,9 @@ export function RoadmapCanvas({
 
   const maxBookX = positionedBooks.length > 0 ? Math.max(...positionedBooks.map((book) => book.position.x)) : 0
   const maxBookY = positionedBooks.length > 0 ? Math.max(...positionedBooks.map((book) => book.position.y)) : 0
-  const canvasWidth = Math.max(900, Math.ceil(maxBookX + nodeWidth + canvasPadding * 3))
+  const branchReserve =
+    roadmap.hasBranches && (roadmap.branchInfo?.tracks?.length ?? 0) > 0 ? 300 : 0
+  const canvasWidth = Math.max(900, Math.ceil(maxBookX + nodeWidth + canvasPadding * 3 + branchReserve))
   const canvasHeight = Math.max(380, Math.ceil(maxBookY + nodeHeight + canvasPadding * 3))
 
   const getConnections = () => {
@@ -560,14 +557,6 @@ export function RoadmapCanvas({
         <AnimatePresence>
           {positionedBooks.map((book, index) => {
             const isInSelectedBranch = !book.branch || book.branch === selectedBranch || !selectedBranch
-            const trackMeta = book.branch
-              ? roadmap.branchInfo?.tracks?.find((t) => t.id === book.branch)
-              : undefined
-            const trackDisplay = book.branch
-              ? trackMeta
-                ? `${book.branch} · ${trackMeta.name}`
-                : book.branch
-              : null
 
             return (
               <BookNode
@@ -581,7 +570,6 @@ export function RoadmapCanvas({
                 onDelete={onDeleteBook ? () => onDeleteBook(book.id) : undefined}
                 onMarkComplete={onMarkComplete && book.status === 'in-progress' ? () => onMarkComplete(book) : undefined}
                 trackColor={book.branch ? trackColorById.get(book.branch) : undefined}
-                trackDisplay={trackDisplay}
               />
             )
           })}
