@@ -42,7 +42,10 @@ export default function RootLayout({
           {children}
         </div>
         <footer className="border-t border-border py-8 text-center bg-background">
-          <p className="text-sm text-muted-foreground">
+          <p className="mx-auto max-w-xl px-4 text-sm text-muted-foreground">
+            본 웹사이트는 알라딘의 OpenAPI를 사용해 제작하였습니다. 알라딘에서 많은 구매 부탁드려요!
+          </p>
+          <p className="mx-auto mt-4 max-w-xl px-4 text-sm text-muted-foreground">
             사이트 관련 모든 문의:{' '}
             <a href="mailto:thomaskim104@gmail.com" className="text-primary hover:underline">
               thomaskim104@gmail.com

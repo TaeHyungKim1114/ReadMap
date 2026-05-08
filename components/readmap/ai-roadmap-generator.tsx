@@ -308,19 +308,24 @@ export function AIRoadmapGenerator({ onRoadmapGenerated, onClose }: AIRoadmapGen
           const errorPayload = (await response.json()) as {
             error?: string
             detail?: string
+            guide?: string
             attempts?: string[]
           }
           
           if (errorPayload.error) {
             errorMessage = errorPayload.error
           }
-          
-          if (Array.isArray(errorPayload.attempts) && errorPayload.attempts.length > 0) {
-            errorDetails = errorPayload.attempts
-          }
-          
+
           if (errorPayload.detail) {
-            errorDetails = [errorPayload.detail, ...errorDetails]
+            errorDetails.push(errorPayload.detail)
+          }
+
+          if (errorPayload.guide) {
+            errorDetails.push(errorPayload.guide)
+          }
+
+          if (Array.isArray(errorPayload.attempts) && errorPayload.attempts.length > 0) {
+            errorDetails.push(...errorPayload.attempts)
           }
         } catch {
           errorMessage = '서버와의 통신 중 오류가 발생했어요.'

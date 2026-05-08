@@ -46,14 +46,6 @@ function createCoupangSearchUrl(query: string): string {
   return `https://link.coupang.com/a/custom-url?q=${encodeURIComponent(query)}`
 }
 
-type OpenLibrarySearchResponse = {
-  docs?: Array<{
-    key?: string
-    title?: string
-    author_name?: string[]
-  }>
-}
-
 type ChatCompletionResponse = {
   choices?: Array<{
     message?: {
@@ -68,104 +60,22 @@ function extractJsonObject(text: string): string {
   return text.trim()
 }
 
-async function findRealBook(
-  title: string,
-  author?: string
-): Promise<{ title: string; author: string; aladinItemUrl?: string } | null> {
-  const t = title.trim()
-  const a = (author ?? '').trim()
-  if (!t) return null
-
-  const aladinKey = process.env.ALADIN_TTB_KEY?.trim()
-  if (aladinKey) {
-    const fromAladin = await findBookViaAladin(t, a, aladinKey)
-    if (fromAladin) {
-      return {
-        title: fromAladin.title,
-        author: fromAladin.author,
-        aladinItemUrl: fromAladin.itemUrl,
-      }
-    }
-  }
-
-  const urls: string[] = []
-  const push = (u: string) => {
-    if (!urls.includes(u)) urls.push(u)
-  }
-
-  // General search (works for Korean + Latin mixed queries)
-  if (a) push(`https://openlibrary.org/search.json?q=${encodeURIComponent(`${t} ${a}`)}&limit=15`)
-  push(`https://openlibrary.org/search.json?q=${encodeURIComponent(t)}&limit=15`)
-  if (a) push(`https://openlibrary.org/search.json?q=${encodeURIComponent(`${a} ${t}`)}&limit=15`)
-  // Structured params often match translated editions better
-  if (a) {
-    push(
-      `https://openlibrary.org/search.json?title=${encodeURIComponent(t)}&author=${encodeURIComponent(a)}&limit=15`
-    )
-  } else {
-    push(`https://openlibrary.org/search.json?title=${encodeURIComponent(t)}&limit=15`)
-  }
-
-  const pickBest = (docs: OpenLibrarySearchResponse['docs'] | undefined) => {
-    if (!docs?.length) return null
-    const normalizedTitle = t.toLowerCase()
-    const normalizedAuthor = a.toLowerCase()
-    const scored = docs
-      .map((doc) => {
-        const docTitle = (doc.title || '').toLowerCase()
-        const docAuthor = (doc.author_name?.[0] || '').toLowerCase()
-        let score = 0
-        if (doc.title && doc.author_name?.[0]) score += 2
-        if (a && docAuthor.includes(normalizedAuthor)) score += 2
-        if (docTitle.includes(normalizedTitle) || normalizedTitle.includes(docTitle)) score += 1
-        return { doc, score }
-      })
-      .filter((row) => row.doc.title && row.doc.author_name?.[0])
-      .sort((x, y) => y.score - x.score)
-
-    const best = scored[0]?.doc
-    if (!best?.title || !best.author_name?.[0]) return null
-    return { title: best.title, author: best.author_name[0], aladinItemUrl: undefined }
-  }
-
-  for (const url of urls) {
-    const res = await fetch(url)
-    if (!res.ok) continue
-    const data = (await res.json()) as OpenLibrarySearchResponse
-    const match = pickBest(data.docs)
-    if (match) {
-      if (aladinKey) {
-        const secondAladin = await findBookViaAladin(match.title, match.author, aladinKey)
-        if (secondAladin) {
-          return {
-            title: match.title,
-            author: match.author,
-            aladinItemUrl: secondAladin.itemUrl,
-          }
-        }
-      }
-      return match
-    }
-  }
-
-  return null
-}
-
-async function verifyRoadmapBooks(roadmap: RoadmapResponse['roadmap']) {
+async function verifyRoadmapBooks(
+  roadmap: RoadmapResponse['roadmap'],
+  ttbKey: string
+): Promise<RoadmapResponse['roadmap']> {
   const verifiedNodes: APINode[] = []
   for (const node of roadmap.nodes) {
-    const realBook = await findRealBook(node.title, node.author)
-    const title = (realBook?.title ?? node.title ?? '').trim() || node.title
-    const author = (realBook?.author ?? node.author ?? '').trim() || '저자 미상'
+    const hit = await findBookViaAladin(node.title, node.author, ttbKey)
+    if (!hit) continue
+
     verifiedNodes.push({
       ...node,
-      title,
-      author,
-      aladinItemUrl:
-        (realBook?.aladinItemUrl ?? node.aladinItemUrl ?? '').trim() || undefined,
+      title: hit.title,
+      author: hit.author,
+      aladinItemUrl: hit.itemUrl,
       coupangSearchUrl:
-        (node.coupangSearchUrl || '').trim() ||
-        createCoupangSearchUrl(title || node.title || '도서'),
+        (node.coupangSearchUrl || '').trim() || createCoupangSearchUrl(hit.title),
     })
   }
 
@@ -178,7 +88,7 @@ async function verifyRoadmapBooks(roadmap: RoadmapResponse['roadmap']) {
     for (let i = 1; i < verifiedNodes.length; i++) {
       verifiedEdges.push({ source: verifiedNodes[i - 1].id, target: verifiedNodes[i].id })
     }
-    console.warn('[api/generate] No valid edges after verification; chained nodes in API order')
+    console.warn('[api/generate] No valid edges after Aladin verification; chained nodes in API order')
   }
 
   return {
@@ -315,47 +225,6 @@ function sanitizeRoadmap(roadmap: RoadmapResponse['roadmap']): RoadmapResponse['
   }
 }
 
-function ensureMinimumNodes(
-  roadmap: RoadmapResponse['roadmap'],
-  prompt: string,
-  minCount: number = 3
-): RoadmapResponse['roadmap'] {
-  if (roadmap.nodes.length >= minCount) return roadmap
-
-  const supplemented = buildFallbackRoadmap(prompt).roadmap
-  const existingIds = new Set(roadmap.nodes.map((node) => node.id))
-  const nextNodes = [...roadmap.nodes]
-
-  for (const node of supplemented.nodes) {
-    if (nextNodes.length >= minCount) break
-    let candidateId = node.id
-    let suffix = 1
-    while (existingIds.has(candidateId)) {
-      candidateId = `${node.id}-${suffix}`
-      suffix += 1
-    }
-    existingIds.add(candidateId)
-    nextNodes.push({ ...node, id: candidateId })
-  }
-
-  const nodeIds = new Set(nextNodes.map((node) => node.id))
-  const originalEdges = roadmap.edges.filter(
-    (edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target)
-  )
-
-  const complementedEdges = nextNodes
-    .slice(1)
-    .map((node, index) => ({ source: nextNodes[index].id, target: node.id }))
-
-  return {
-    ...roadmap,
-    nodes: nextNodes,
-    edges: originalEdges.length > 0 ? originalEdges : complementedEdges,
-    hasBranches: roadmap.hasBranches,
-    branchInfo: roadmap.branchInfo,
-  }
-}
-
 function buildFallbackRoadmap(prompt: string): RoadmapResponse {
   return {
     roadmap: {
@@ -390,7 +259,7 @@ function buildFallbackRoadmap(prompt: string): RoadmapResponse {
 
 async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: boolean) {
   const retryHint = isRetry
-    ? '\n중요: 이전 결과 품질이 낮았습니다. 반드시 더 유명하고 검증 가능한 실존 도서를 선택하고, 논문집·학위논문·연구자 전용 간행물은 제외하며 교보문고/알라딘 매대에 있는 단행본 위주로 다시 구성하세요.'
+    ? '\n중요: 이전에 알라딘 검색으로 일부 책이 누락되었습니다. 각 노드 도서마다 알라딘(aladin.co.kr) 검색 결과 1순위에 나올 정도로 **정확한 한글 도서명·저자명**으로만 다시 작성하세요. 초베스트셀러·스테디셀러만 선택하세요.'
     : ''
 
   const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -428,12 +297,13 @@ async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: 
                 'Every post-branch node with branch set must use branch id exactly matching one of branchInfo.tracks[].id.',
                 'Set requiresChoice=true on branch point node. Set branch field on each branch node.',
                 'After the branch point, use at most 2 books per track so total nodes stay within 6-9.',
-                'Pick books that are very likely to appear in OpenLibrary search (world-famous works, widely translated classics, major bestsellers).',
-                'When a famous Korean edition maps to a well-known international edition, prefer spelling that OpenLibrary indexes well for author/title.',
+                'The server validates EVERY book ONLY via Aladin Open API ItemSearch — books not found there are REMOVED. Choose only famous titles whose Korean listing on aladin.co.kr matches your title and author strings.',
+                'Output title and author exactly as shoppers would search on Aladin Korea (표기 통일·띄어쓰기·부제 정도는 현실적인 범위 안에서 검색 매칭이 잘 되게).',
+                'Pick nationally recognizable bestsellers and steady sellers that always return in Aladin Keyword/Title search.',
                 'Each node MUST include non-empty id, title, author, coupangSearchUrl, and position.',
                 'Also include roadmap.recommendedItems (2-5 items) for essential learning gear/electronics/stationery.',
                 'Every coupangSearchUrl MUST use: https://link.coupang.com/a/custom-url?q={query}',
-                'Before finalizing, self-check: real books only, Korean edition preference, smooth difficulty progression, valid prerequisite edges, complete Coupang URLs.',
+                'Before finalizing, self-check: real books only, Korean edition preference, smooth difficulty progression, valid prerequisite edges, complete Coupang URLs, EVERY book realistically findable via Aladin search.',
                 'Return ONLY valid JSON with this shape: {"roadmap":{"title":string,"description":string,"hasBranches":boolean,"branchInfo":{"branchPoint":string,"tracks":[{"id":string,"name":string,"description":string}]},"nodes":[{"id":string,"title":string,"author":string,"coupangSearchUrl":string,"branch":string,"requiresChoice":boolean,"position":{"x":number,"y":number}}],"edges":[{"source":string,"target":string}],"recommendedItems":[{"id":string,"name":string,"reason":string,"coupangSearchUrl":string}]}}',
               ].join(' '),
             },
@@ -449,8 +319,8 @@ async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: 
                 '노드(도서) 개수는 반드시 6개 이상 9개 이하여야 한다. 10개 이상 절대 금지.',
                 '한국 독자가 교보문고·알라딘·예스24·쿠팡북스 등에서 바로 검색해 살 수 있는 일반 독자용 단행본만 넣어줘.',
                 '논문집, 학위논문, 학술지 특집호, 학회 프로시딩, 연구소 보고서, 대학교 출판부의 연구자 전용 단행본처럼 서점 일반 매대에 잘 안 올라오는 것은 절대 넣지 마.',
-                '한국어 원서 또는 한국어 번역본만 사용하고, 제목은 한국어 표기로 써줘.',
-                'OpenLibrary 같은 글로벌 카탈로그에서 검색될 가능성이 높은 초유명/대표 베스트셀러 위주로 골라줘.',
+                '서버는 알라딘 Open API로만 책 검증한다. 검색 매칭이 안 된 도서 노드는 제거된다. 반드시 **알라딘에 실제 등록되어 검색되는** 초유명·대표 단행본만 넣어라.',
+                '도서명·저자명은 알라딘 사이트에서 검색했을 때 상위 결과와 맞먹도록 한국 표기를 사용해라. 지어낸 제목 금지.',
                 '난이도 흐름은 반드시 기초 -> 원리 -> 응용 -> 심화 순서로 구성하고, 이전 단계가 다음 단계의 선수학습이 되게 해줘.',
                 '트랙 안에서 난이도가 급상승하지 않도록 가교 도서를 배치해줘.',
                 '초반 공통 트랙 뒤에 1~3개 분기 트랙(A/B/C)이 있는 스킬트리 구조로 구성해줘.',
@@ -515,6 +385,18 @@ export async function POST(request: Request) {
       )
     }
 
+    const aladinKey = process.env.ALADIN_TTB_KEY?.trim()
+    if (!aladinKey) {
+      return NextResponse.json(
+        {
+          error: 'ALADIN_TTB_KEY is not configured',
+          guide:
+            'AI 로드맵은 알라딘 Open API로만 책을 검증합니다. Vercel·.env.local에 ALADIN_TTB_KEY를 설정하고 재배포하세요.',
+        },
+        { status: 503 }
+      )
+    }
+
     const attemptErrors: string[] = []
     for (const isRetry of [false, true]) {
       try {
@@ -525,9 +407,9 @@ export async function POST(request: Request) {
           continue
         }
 
-        const verifiedRoadmap = sanitizeRoadmap(await verifyRoadmapBooks(candidate))
+        const verifiedRoadmap = sanitizeRoadmap(await verifyRoadmapBooks(candidate, aladinKey))
         if (verifiedRoadmap.nodes.length >= 3) {
-          console.log('[api/generate] Parsed roadmap from model output', {
+          console.log('[api/generate] Aladin-verified roadmap', {
             isRetry,
             title: verifiedRoadmap.title,
             nodes: verifiedRoadmap.nodes.length,
@@ -536,34 +418,15 @@ export async function POST(request: Request) {
           return NextResponse.json({ roadmap: verifiedRoadmap })
         }
 
-        const sanitizedCandidate = sanitizeRoadmap(candidate)
-        if (sanitizedCandidate.nodes.length >= 3) {
-          console.warn('[api/generate] Verification too strict, using unverified candidate', {
-            isRetry,
-            verifiedNodes: verifiedRoadmap.nodes.length,
-            candidateNodes: sanitizedCandidate.nodes.length,
-          })
-          return NextResponse.json({ roadmap: sanitizedCandidate })
-        }
-
-        const supplementedCandidate = ensureMinimumNodes(sanitizedCandidate, prompt, 3)
-        if (supplementedCandidate.nodes.length >= 3) {
-          console.warn('[api/generate] Candidate supplemented to minimum nodes', {
-            isRetry,
-            verifiedNodes: verifiedRoadmap.nodes.length,
-            candidateNodes: sanitizedCandidate.nodes.length,
-            supplementedNodes: supplementedCandidate.nodes.length,
-          })
-          return NextResponse.json({ roadmap: supplementedCandidate })
-        }
-
-        console.warn('[api/generate] Too few verified/candidate books', {
+        const dropped = candidate.nodes.length - verifiedRoadmap.nodes.length
+        console.warn('[api/generate] Too few Aladin-verified books', {
           isRetry,
           verifiedNodes: verifiedRoadmap.nodes.length,
-          candidateNodes: sanitizedCandidate.nodes.length,
+          candidateNodes: candidate.nodes.length,
+          dropped,
         })
         attemptErrors.push(
-          `attempt ${isRetry ? 2 : 1}: too few verified/candidate books (verified=${verifiedRoadmap.nodes.length}, candidate=${sanitizedCandidate.nodes.length})`
+          `attempt ${isRetry ? 2 : 1}: too few Aladin-verified nodes (verified=${verifiedRoadmap.nodes.length}, candidate=${candidate.nodes.length})`
         )
       } catch (error) {
         console.error('[api/generate] generation attempt failed', { isRetry, error })
@@ -579,7 +442,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: 'Roadmap generation failed',
-        detail: 'OpenAI request/verification failed. Check server logs and API key/quota.',
+        detail:
+          'OpenAI 또는 알라딘 검증 실패였을 수 있습니다. 알라딘 키·호출 허용 URL·쿼터를 확인하고, 주제를 조금 바꿔 다시 시도해 보세요.',
         attempts: attemptErrors,
         fallback: buildFallbackRoadmap(prompt),
       },
