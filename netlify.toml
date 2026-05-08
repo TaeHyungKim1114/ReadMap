@@ -6,6 +6,8 @@
 [build]
   # Next 16 기본값은 Turbopack 빌드라 @netlify/plugin-nextjs와 충돌할 수 있어 webpack 사용
   command = "npm run build"
+  # plugin-nextjs가 기본 publish(/opt/build/repo)를 루트로 판단해 실패하는 케이스 방지
+  publish = ".netlify/static"
 
 # Next.js(App Router + /app/api) 공식 런타임 — https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/
 [[plugins]]
