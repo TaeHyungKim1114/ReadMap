@@ -43,10 +43,6 @@ export default function RootLayout({
         </div>
         <footer className="border-t border-border py-6 text-center bg-background">
           <p className="mx-auto max-w-5xl px-4 text-sm leading-relaxed text-muted-foreground">
-            본 웹사이트는 알라딘의 OpenAPI를 사용해 제작하였습니다. 알라딘에서 많은 구매 부탁드려요!
-            <span className="mx-2 text-border" aria-hidden>
-              ·
-            </span>
             사이트 관련 모든 문의:{' '}
             <a href="mailto:thomaskim104@gmail.com" className="text-primary hover:underline">
               thomaskim104@gmail.com
@@ -55,6 +51,9 @@ export default function RootLayout({
               ·
             </span>
             자유로운 피드백, 의견 부탁드립니다
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            본 웹사이트는 알라딘의 OpenAPI를 사용해 제작하였습니다. 알라딘에서 많은 구매 부탁드려요!
           </p>
         </footer>
         <Toaster />
