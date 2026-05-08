@@ -11,6 +11,7 @@ type APINode = {
   title: string
   author?: string
   coupangSearchUrl?: string
+  aladinItemUrl?: string
   position: { x: number; y: number }
   branch?: string
   requiresChoice?: boolean
@@ -67,7 +68,10 @@ function extractJsonObject(text: string): string {
   return text.trim()
 }
 
-async function findRealBook(title: string, author?: string): Promise<{ title: string; author: string } | null> {
+async function findRealBook(
+  title: string,
+  author?: string
+): Promise<{ title: string; author: string; aladinItemUrl?: string } | null> {
   const t = title.trim()
   const a = (author ?? '').trim()
   if (!t) return null
@@ -75,7 +79,13 @@ async function findRealBook(title: string, author?: string): Promise<{ title: st
   const aladinKey = process.env.ALADIN_TTB_KEY?.trim()
   if (aladinKey) {
     const fromAladin = await findBookViaAladin(t, a, aladinKey)
-    if (fromAladin) return fromAladin
+    if (fromAladin) {
+      return {
+        title: fromAladin.title,
+        author: fromAladin.author,
+        aladinItemUrl: fromAladin.itemUrl,
+      }
+    }
   }
 
   const urls: string[] = []
@@ -115,7 +125,7 @@ async function findRealBook(title: string, author?: string): Promise<{ title: st
 
     const best = scored[0]?.doc
     if (!best?.title || !best.author_name?.[0]) return null
-    return { title: best.title, author: best.author_name[0] }
+    return { title: best.title, author: best.author_name[0], aladinItemUrl: undefined }
   }
 
   for (const url of urls) {
@@ -123,7 +133,19 @@ async function findRealBook(title: string, author?: string): Promise<{ title: st
     if (!res.ok) continue
     const data = (await res.json()) as OpenLibrarySearchResponse
     const match = pickBest(data.docs)
-    if (match) return match
+    if (match) {
+      if (aladinKey) {
+        const secondAladin = await findBookViaAladin(match.title, match.author, aladinKey)
+        if (secondAladin) {
+          return {
+            title: match.title,
+            author: match.author,
+            aladinItemUrl: secondAladin.itemUrl,
+          }
+        }
+      }
+      return match
+    }
   }
 
   return null
@@ -139,6 +161,8 @@ async function verifyRoadmapBooks(roadmap: RoadmapResponse['roadmap']) {
       ...node,
       title,
       author,
+      aladinItemUrl:
+        (realBook?.aladinItemUrl ?? node.aladinItemUrl ?? '').trim() || undefined,
       coupangSearchUrl:
         (node.coupangSearchUrl || '').trim() ||
         createCoupangSearchUrl(title || node.title || '도서'),
@@ -181,18 +205,21 @@ function sanitizeRoadmap(roadmap: RoadmapResponse['roadmap']): RoadmapResponse['
       usedIds.add(id)
 
       return {
-      id,
-      title: (node.title || '').trim() || `도서 ${index + 1}`,
-      author: (node.author || '').trim() || '저자 미상',
-      coupangSearchUrl:
-        (node.coupangSearchUrl || '').trim() || createCoupangSearchUrl((node.title || '').trim() || `도서 ${index + 1}`),
-      branch: node.branch,
-      requiresChoice: Boolean(node.requiresChoice),
-      position: {
-        x: toNumber(node.position?.x, 40 + index * 180),
-        y: toNumber(node.position?.y, 90),
-      },
-    }})
+        id,
+        title: (node.title || '').trim() || `도서 ${index + 1}`,
+        author: (node.author || '').trim() || '저자 미상',
+        coupangSearchUrl:
+          (node.coupangSearchUrl || '').trim() ||
+          createCoupangSearchUrl((node.title || '').trim() || `도서 ${index + 1}`),
+        aladinItemUrl: (node.aladinItemUrl || '').trim() || undefined,
+        branch: node.branch,
+        requiresChoice: Boolean(node.requiresChoice),
+        position: {
+          x: toNumber(node.position?.x, 40 + index * 180),
+          y: toNumber(node.position?.y, 90),
+        },
+      }
+    })
     .filter((node) => Boolean(node.id))
 
   // If many nodes share near-identical coordinates, spread them horizontally.

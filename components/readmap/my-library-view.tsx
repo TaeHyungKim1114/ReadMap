@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Book, Review, createCoupangSearchUrl, formatDate, formatPrice } from '@/lib/book-data'
+import { Book, Review, createCoupangSearchUrl, createAladinSearchUrl, formatDate, formatPrice } from '@/lib/book-data'
 import { useAuth } from '@/lib/auth-context'
 import { Star, BookOpen, Calendar, ExternalLink, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -138,11 +138,21 @@ export function MyLibraryView({ completedBooks, myReviews }: MyLibraryViewProps)
                     )}
 
                     {/* 쿠팡 링크 */}
-                    <div className="mt-4 flex items-center justify-between">
-                      <div className="text-sm">
+                    <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                      <div className="mr-auto text-sm">
                         <span className="text-muted-foreground">구매가: </span>
                         <span className="font-medium text-foreground">{formatPrice(book.price)}</span>
                       </div>
+                      <Button asChild variant="outline" size="sm" className="gap-2">
+                        <a
+                          href={book.aladinItemUrl || createAladinSearchUrl(`${book.title} ${book.author}`.trim())}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          알라딘
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </Button>
                       <Button asChild variant="outline" size="sm" className="gap-2">
                         <a
                           href={book.coupangSearchUrl || createCoupangSearchUrl(book.title)}
@@ -150,7 +160,7 @@ export function MyLibraryView({ completedBooks, myReviews }: MyLibraryViewProps)
                           rel="noopener noreferrer"
                         >
                           <ShoppingCart className="h-3 w-3" />
-                          쿠팡에서 구매
+                          쿠팡
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </Button>

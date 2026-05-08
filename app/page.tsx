@@ -20,7 +20,7 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Edit3, ExternalLink, Save, ShoppingCart } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { createCoupangSearchUrl } from '@/lib/book-data'
+import { createCoupangSearchUrl, createAladinSearchUrl } from '@/lib/book-data'
 import { mergeBranchInfoFromBooks } from '@/lib/branch-info'
 
 type ViewMode = 'roadmap' | 'community' | 'select-roadmap' | 'my-library' | 'settings'
@@ -30,6 +30,7 @@ type APINode = {
   label?: string
   author?: string
   coupangSearchUrl?: string
+  aladinItemUrl?: string
   branch?: string
   requiresChoice?: boolean
   position?: { x: number; y: number }
@@ -372,6 +373,9 @@ function MainApp() {
         rating: 0,
         reviewCount: 0,
         coupangSearchUrl: node.coupangSearchUrl || createCoupangSearchUrl(node.title || node.label || `도서 ${index + 1}`),
+        aladinItemUrl:
+          node.aladinItemUrl ||
+          createAladinSearchUrl(`${node.title || node.label || `도서 ${index + 1}`} ${node.author || ''}`.trim()),
         isbn: '',
         branch: node.branch,
         requiresChoice: node.requiresChoice,
@@ -592,6 +596,7 @@ function MainApp() {
         rating: 4.0,
         reviewCount: 0,
         coupangSearchUrl: createCoupangSearchUrl('새 책 추가'),
+        aladinItemUrl: createAladinSearchUrl('새 책 추가'),
         isbn: '0000000000',
         prerequisiteIds: afterBookId ? [afterBookId] : undefined,
         whyRead: '이 책을 왜 읽어야 하는지 작성해보세요.'

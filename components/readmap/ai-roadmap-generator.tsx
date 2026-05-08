@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, X, BookOpen, Target, Wand2, Bot, Brain, Search, Zap, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Roadmap, Book, createCoupangSearchUrl } from '@/lib/book-data'
+import { Roadmap, Book, createCoupangSearchUrl, createAladinSearchUrl } from '@/lib/book-data'
 import { mergeBranchInfoFromBooks } from '@/lib/branch-info'
 import { useToast } from '@/hooks/use-toast'
 
@@ -25,6 +25,7 @@ type APINode = {
   label?: string
   author?: string
   coupangSearchUrl?: string
+  aladinItemUrl?: string
   branch?: string
   requiresChoice?: boolean
   position?: { x: number; y: number }
@@ -186,6 +187,9 @@ const normalizeRoadmap = (raw: RoadmapLike, fallbackGoal: string): Roadmap => {
       rating: 0,
       reviewCount: 0,
       coupangSearchUrl: node.coupangSearchUrl || createCoupangSearchUrl(node.title || node.label || `도서 ${index + 1}`),
+      aladinItemUrl:
+        node.aladinItemUrl ||
+        createAladinSearchUrl(`${node.title || node.label || `도서 ${index + 1}`} ${node.author || ''}`.trim()),
       isbn: '',
       branch: node.branch,
       requiresChoice: node.requiresChoice,

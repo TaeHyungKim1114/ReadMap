@@ -30,6 +30,8 @@ export interface Book {
   rating: number
   reviewCount: number
   coupangSearchUrl?: string
+  /** 알라딘 TTB ItemSearch 응답의 상품 페이지(link); 없으면 검색 URL로 대체 */
+  aladinItemUrl?: string
   isbn: string
   // Review requirement
   hasReview?: boolean
@@ -66,6 +68,9 @@ export interface Roadmap {
 
 export const createCoupangSearchUrl = (query: string): string =>
   `https://link.coupang.com/a/custom-url?q=${encodeURIComponent(query)}`
+
+export const createAladinSearchUrl = (query: string): string =>
+  `https://www.aladin.co.kr/search/wsearchresult.aspx?KeywordSearch=${encodeURIComponent(query)}`
 
 // 여러 로드맵 데이터 (분기 포함)
 export const roadmaps: Roadmap[] = [

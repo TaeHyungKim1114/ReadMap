@@ -6,6 +6,7 @@
 type AladinItem = {
   title?: string
   author?: string
+  link?: string
 }
 
 type AladinSearchPayload = {
@@ -46,6 +47,17 @@ function stripHtmlTitle(title: string): string {
   return title.replace(/<[^>]+>/g, '').trim()
 }
 
+function normalizeAladinItemUrl(link: unknown): string | undefined {
+  if (typeof link !== 'string' || !link.trim()) return undefined
+  try {
+    const u = new URL(link.trim())
+    if (u.hostname.endsWith('aladin.co.kr')) return u.toString()
+  } catch {
+    return undefined
+  }
+  return undefined
+}
+
 function scoreItem(item: AladinItem, wantTitle: string, wantAuthor: string): number {
   const title = stripHtmlTitle((item.title ?? '').trim())
   const author = (item.author ?? '').trim()
@@ -62,13 +74,13 @@ function scoreItem(item: AladinItem, wantTitle: string, wantAuthor: string): num
 }
 
 /**
- * 알라딘에서 도서 1건을 찾으면 표준 제목·저자 문자열을 반환합니다. (HTML 태그 제거)
+ * 알라딘에서 도서 1건을 찾으면 표준 제목·저자·상품 페이지 URL( API `link` )을 반환합니다.
  */
 export async function findBookViaAladin(
   title: string,
   author: string | undefined,
   ttbKey: string
-): Promise<{ title: string; author: string } | null> {
+): Promise<{ title: string; author: string; itemUrl: string } | null> {
   const t = title.trim()
   const a = (author ?? '').trim()
   if (!t || !ttbKey.trim()) return null
@@ -109,12 +121,14 @@ export async function findBookViaAladin(
       .filter((x) => x.score >= 0)
       .sort((x, y) => y.score - x.score)
 
-    const best = ranked[0]?.it ?? items[0]
-    const outTitle = stripHtmlTitle((best.title ?? '').trim())
-    const outAuthor = (best.author ?? '').trim()
-    if (!outTitle || !outAuthor) continue
-
-    return { title: outTitle, author: outAuthor }
+    const candidates = (ranked.length ? ranked.map((r) => r.it) : items).filter(Boolean)
+    for (const best of candidates) {
+      const outTitle = stripHtmlTitle((best.title ?? '').trim())
+      const outAuthor = (best.author ?? '').trim()
+      const itemUrl = normalizeAladinItemUrl(best.link)
+      if (!outTitle || !outAuthor || !itemUrl) continue
+      return { title: outTitle, author: outAuthor, itemUrl }
+    }
   }
 
   return null
