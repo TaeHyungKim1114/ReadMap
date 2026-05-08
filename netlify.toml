@@ -1,4 +1,5 @@
 [build]
+  # Next 16 기본값은 Turbopack 빌드라 @netlify/plugin-nextjs와 충돌할 수 있어 webpack 사용
   command = "npm run build"
 
 # Next.js(App Router + /app/api) 공식 런타임 — https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/
