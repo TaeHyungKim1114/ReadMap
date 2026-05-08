@@ -246,8 +246,14 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
               {/* Marketplace Rating Section */}
               <div className="mb-6 rounded-xl border border-border bg-secondary/50 p-4">
                 <div className="mb-3 flex items-center gap-2">
-                  <div className="flex h-6 items-center rounded bg-[#f97316] px-2">
-                    <span className="text-xs font-bold text-white">쿠팡</span>
+                  <div
+                    className={`flex h-6 items-center rounded px-2 ${
+                      book.aladinItemUrl ? 'bg-[#0066d4]' : 'bg-[#f97316]'
+                    }`}
+                  >
+                    <span className="text-xs font-bold text-white">
+                      {book.aladinItemUrl ? '알라딘' : '쿠팡'}
+                    </span>
                   </div>
                   <span className="text-sm text-muted-foreground">사용자 평점</span>
                 </div>
