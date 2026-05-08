@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { mergeBranchInfoFromBooks } from '@/lib/branch-info'
 
 type GenerateRequestBody = {
   prompt?: string
@@ -66,24 +67,56 @@ function extractJsonObject(text: string): string {
 }
 
 async function findRealBook(title: string, author?: string): Promise<{ title: string; author: string } | null> {
-  const queries = [
-    `${title} ${author ?? ''}`.trim(),
-    title.trim(),
-  ]
+  const t = title.trim()
+  const a = (author ?? '').trim()
+  if (!t) return null
 
-  for (const query of queries) {
-    if (!query) continue
-    const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=5`)
+  const urls: string[] = []
+  const push = (u: string) => {
+    if (!urls.includes(u)) urls.push(u)
+  }
+
+  // General search (works for Korean + Latin mixed queries)
+  if (a) push(`https://openlibrary.org/search.json?q=${encodeURIComponent(`${t} ${a}`)}&limit=15`)
+  push(`https://openlibrary.org/search.json?q=${encodeURIComponent(t)}&limit=15`)
+  if (a) push(`https://openlibrary.org/search.json?q=${encodeURIComponent(`${a} ${t}`)}&limit=15`)
+  // Structured params often match translated editions better
+  if (a) {
+    push(
+      `https://openlibrary.org/search.json?title=${encodeURIComponent(t)}&author=${encodeURIComponent(a)}&limit=15`
+    )
+  } else {
+    push(`https://openlibrary.org/search.json?title=${encodeURIComponent(t)}&limit=15`)
+  }
+
+  const pickBest = (docs: OpenLibrarySearchResponse['docs'] | undefined) => {
+    if (!docs?.length) return null
+    const normalizedTitle = t.toLowerCase()
+    const normalizedAuthor = a.toLowerCase()
+    const scored = docs
+      .map((doc) => {
+        const docTitle = (doc.title || '').toLowerCase()
+        const docAuthor = (doc.author_name?.[0] || '').toLowerCase()
+        let score = 0
+        if (doc.title && doc.author_name?.[0]) score += 2
+        if (a && docAuthor.includes(normalizedAuthor)) score += 2
+        if (docTitle.includes(normalizedTitle) || normalizedTitle.includes(docTitle)) score += 1
+        return { doc, score }
+      })
+      .filter((row) => row.doc.title && row.doc.author_name?.[0])
+      .sort((x, y) => y.score - x.score)
+
+    const best = scored[0]?.doc
+    if (!best?.title || !best.author_name?.[0]) return null
+    return { title: best.title, author: best.author_name[0] }
+  }
+
+  for (const url of urls) {
+    const res = await fetch(url)
     if (!res.ok) continue
-
     const data = (await res.json()) as OpenLibrarySearchResponse
-    const best = data.docs?.find((doc) => doc.title && doc.author_name?.[0])
-    if (!best?.title || !best.author_name?.[0]) continue
-
-    return {
-      title: best.title,
-      author: best.author_name[0],
-    }
+    const match = pickBest(data.docs)
+    if (match) return match
   }
 
   return null
@@ -165,26 +198,38 @@ function sanitizeRoadmap(roadmap: RoadmapResponse['roadmap']): RoadmapResponse['
     }
   })
 
-  const nodeIds = new Set(spreadNodes.map((node) => node.id))
-  const sanitizedEdges = roadmap.edges.filter(
+  const MAX_ROADMAP_NODES = 9
+  let cappedNodes = spreadNodes
+  let cappedEdges = roadmap.edges.filter((edge) =>
+    spreadNodes.some((n) => n.id === edge.source) && spreadNodes.some((n) => n.id === edge.target)
+  )
+  if (cappedNodes.length > MAX_ROADMAP_NODES) {
+    const keep = new Set(cappedNodes.map((n) => n.id))
+    while (keep.size > MAX_ROADMAP_NODES) {
+      const leaf = [...keep].find(
+        (k) => ![...keep].some((v) => cappedEdges.some((e) => e.source === k && e.target === v))
+      )
+      if (leaf) {
+        keep.delete(leaf)
+        continue
+      }
+      const arbitrary = [...keep][0]
+      if (!arbitrary) break
+      keep.delete(arbitrary)
+    }
+    cappedNodes = cappedNodes.filter((n) => keep.has(n.id))
+    cappedEdges = cappedEdges.filter((e) => keep.has(e.source) && keep.has(e.target))
+    console.warn('[api/generate] Capped roadmap nodes to', cappedNodes.length, '(max', MAX_ROADMAP_NODES, ')')
+  }
+
+  const nodeIds = new Set(cappedNodes.map((node) => node.id))
+  const sanitizedEdges = cappedEdges.filter(
     (edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target)
   )
   const inferredTrackIds = Array.from(
-    new Set(spreadNodes.map((node) => node.branch).filter(Boolean))
+    new Set(cappedNodes.map((node) => node.branch).filter(Boolean))
   ) as string[]
-  const normalizedBranchInfo =
-    roadmap.branchInfo?.tracks?.length
-      ? roadmap.branchInfo
-      : inferredTrackIds.length > 0
-      ? {
-          branchPoint: spreadNodes.find((node) => node.requiresChoice)?.id ?? spreadNodes[0]?.id ?? 'step-1',
-          tracks: inferredTrackIds.map((id) => ({
-            id,
-            name: `${id} 트랙`,
-            description: `${id} 경로`,
-          })),
-        }
-      : undefined
+  const normalizedBranchInfo = mergeBranchInfoFromBooks(roadmap.branchInfo, cappedNodes)
 
   const normalizedRecommendedItems = Array.isArray(roadmap.recommendedItems)
     ? roadmap.recommendedItems
@@ -203,7 +248,7 @@ function sanitizeRoadmap(roadmap: RoadmapResponse['roadmap']): RoadmapResponse['
 
   return {
     ...roadmap,
-    nodes: spreadNodes,
+    nodes: cappedNodes,
     edges: sanitizedEdges,
     hasBranches: roadmap.hasBranches ?? inferredTrackIds.length > 0,
     recommendedItems: normalizedRecommendedItems,
@@ -296,7 +341,7 @@ async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       response_format: { type: 'json_object' },
       messages: [
         {
@@ -314,12 +359,16 @@ async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: 
                 'The learning order must strictly follow: foundation -> principles -> application -> advanced.',
                 'Each next step must depend on prior knowledge from previous steps; model this dependency in edges.',
                 'Avoid difficulty cliffs. Difficulty in each track must rise gradually; insert bridge books when needed.',
-                'Return 6 to 10 nodes based on topic complexity.',
+                'Return exactly between 6 and 9 nodes inclusive (never fewer than 6, never more than 9).',
                 'Build a branch-based skill tree with an early common trunk and then 1 to 3 tracks (A/B/C).',
                 'Set roadmap.hasBranches=true and include roadmap.branchInfo.branchPoint + tracks.',
-                'tracks must be [{id,name,description}] and ids should be A/B/C.',
+                'tracks must be [{id,name,description}] with ids A/B/C (subset if fewer tracks).',
+                'Each track MUST have a unique Korean name (short label) and a Korean description of at least 40 characters explaining learning goals on that track for THIS roadmap topic; descriptions must differ across tracks and align with the books you assign to that track id.',
+                'Every post-branch node with branch set must use branch id exactly matching one of branchInfo.tracks[].id.',
                 'Set requiresChoice=true on branch point node. Set branch field on each branch node.',
-                'When branching, recommend 2-3 books per track after the branch point.',
+                'After the branch point, use at most 2 books per track so total nodes stay within 6-9.',
+                'Pick books that are very likely to appear in OpenLibrary search (world-famous works, widely translated classics, major bestsellers).',
+                'When a famous Korean edition maps to a well-known international edition, prefer spelling that OpenLibrary indexes well for author/title.',
                 'Each node MUST include non-empty id, title, author, coupangSearchUrl, and position.',
                 'Also include roadmap.recommendedItems (2-5 items) for essential learning gear/electronics/stationery.',
                 'Every coupangSearchUrl MUST use: https://link.coupang.com/a/custom-url?q={query}',
@@ -336,16 +385,19 @@ async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: 
               type: 'text',
               text: [
                 `주제: ${prompt}`,
-                '주제 난이도에 따라 6~10권으로 단계형 독서 로드맵을 만들어줘.',
+                '노드(도서) 개수는 반드시 6개 이상 9개 이하여야 한다. 10개 이상 절대 금지.',
                 '한국 독자가 실제로 구할 수 있는 실존 도서만 포함해줘. (교보문고/알라딘/예스24 기준)',
                 '한국어 원서 또는 한국어 번역본만 사용하고, 제목은 한국어 표기로 써줘.',
+                'OpenLibrary 같은 글로벌 카탈로그에서 검색될 가능성이 높은 초유명/대표 베스트셀러 위주로 골라줘.',
                 '난이도 흐름은 반드시 기초 -> 원리 -> 응용 -> 심화 순서로 구성하고, 이전 단계가 다음 단계의 선수학습이 되게 해줘.',
                 '트랙 안에서 난이도가 급상승하지 않도록 가교 도서를 배치해줘.',
                 '초반 공통 트랙 뒤에 1~3개 분기 트랙(A/B/C)이 있는 스킬트리 구조로 구성해줘.',
                 '분기 시작 노드에는 requiresChoice=true를 넣고, 분기 노드에는 branch: "A" | "B" | "C" 중 적절한 값을 넣어줘.',
                 'roadmap.hasBranches=true, roadmap.branchInfo.branchPoint/tracks를 반드시 채워줘.',
-                'tracks는 [{id,name,description}] 형태로 작성하고, 트랙이 늘어나면 그에 맞춰 추천 책도 충분히 늘려줘.',
-                '분기 이후 각 트랙에는 2~3권씩 배치해줘.',
+                'tracks는 반드시 [{id,name,description}] 형태로 채워줘. name은 짧은 한국어 트랙 제목, description은 이 로드맵 주제에 맞춰 그 트랙(A/B/C)에 배치한 도서들의 학습 방향·기대효과를 40~120자 한국어로 구체적으로 작성해줘.',
+                'description은 빈 문자열·"A 경로" 같은 형식적 한 줄 금지. 트랙마다 문장이 겹치면 안 돼.',
+                '분기 이후 각 도서 노드의 branch 값은 branchInfo.tracks[].id와 정확히 일치해야 해.',
+                '트랙 수와 트랙당 권수를 조절해 전체 노드는 6~9개로 맞추고, 분기 이후 각 트랙에는 최대 2권만 배치해줘.',
                 '각 노드는 반드시 id, title, author, coupangSearchUrl, position(x,y)을 포함해줘.',
                 '로드맵 하단에 보여줄 필수 장비/교구/전자제품 추천도 2~5개 포함하고 recommendedItems에 넣어줘.',
                 '추천 상품은 반드시 쿠팡에서 검색 가능한 실존 상품으로 작성하고 coupangSearchUrl 필드를 채워줘.',

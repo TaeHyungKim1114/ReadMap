@@ -6,6 +6,7 @@ import { Sparkles, X, BookOpen, Target, Wand2, Bot, Brain, Search, Zap, AlertTri
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Roadmap, Book, createCoupangSearchUrl } from '@/lib/book-data'
+import { mergeBranchInfoFromBooks } from '@/lib/branch-info'
 import { useToast } from '@/hooks/use-toast'
 
 interface AIRoadmapGeneratorProps {
@@ -217,20 +218,7 @@ const normalizeRoadmap = (raw: RoadmapLike, fallbackGoal: string): Roadmap => {
     new Set(spreadBooks.map((book) => book.branch).filter(Boolean))
   ) as string[]
   const hasBranchTracks = inferredTrackIds.length > 0
-  const inferredBranchPoint =
-    spreadBooks.find((book) => book.requiresChoice)?.id ?? spreadBooks[0]?.id ?? ''
-  const normalizedBranchInfo = raw.branchInfo?.tracks?.length
-    ? raw.branchInfo
-    : hasBranchTracks
-    ? {
-        branchPoint: inferredBranchPoint,
-        tracks: inferredTrackIds.map((id) => ({
-          id,
-          name: `${id} 트랙`,
-          description: `${id} 경로`,
-        })),
-      }
-    : undefined
+  const normalizedBranchInfo = mergeBranchInfoFromBooks(raw.branchInfo, spreadBooks)
 
   return {
     id: raw.id || `ai-${Date.now()}`,
