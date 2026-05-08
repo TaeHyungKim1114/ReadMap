@@ -13,3 +13,5 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # trace 수집 등으로 메모리가 부족하면 exit code 2 — 빌더 힙 상향
+  NODE_OPTIONS = "--max-old-space-size=8192"
