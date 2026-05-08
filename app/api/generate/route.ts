@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { findBookViaAladin } from '@/lib/aladin-book-search'
 import { mergeBranchInfoFromBooks } from '@/lib/branch-info'
 
 type GenerateRequestBody = {
@@ -70,6 +71,12 @@ async function findRealBook(title: string, author?: string): Promise<{ title: st
   const t = title.trim()
   const a = (author ?? '').trim()
   if (!t) return null
+
+  const aladinKey = process.env.ALADIN_TTB_KEY?.trim()
+  if (aladinKey) {
+    const fromAladin = await findBookViaAladin(t, a, aladinKey)
+    if (fromAladin) return fromAladin
+  }
 
   const urls: string[] = []
   const push = (u: string) => {
