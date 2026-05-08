@@ -352,7 +352,7 @@ function BranchSelector({
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-foreground">{track.name}</p>
                   <p
-                    className="mt-0.5 text-[10px] leading-snug text-muted-foreground line-clamp-3"
+                    className="mt-1 text-[11px] leading-snug text-foreground/85 line-clamp-4"
                     title={track.description}
                   >
                     {track.description}
@@ -519,7 +519,7 @@ export function RoadmapCanvas({
 
       <div className="relative p-6 pb-20" style={{ width: canvasWidth, height: canvasHeight }}>
         {/* Branch Selector */}
-        {showBranchSelector && !isEditable && (
+        {showBranchSelector && (
           <BranchSelector
             branchInfo={roadmap.branchInfo}
             selectedBranch={selectedBranch}

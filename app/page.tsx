@@ -403,7 +403,16 @@ function MainApp() {
       new Set(spreadBooks.map((book) => book.branch).filter(Boolean))
     ) as string[]
     const hasBranchTracks = inferredTrackIds.length > 0
-    const normalizedBranchInfo = mergeBranchInfoFromBooks(raw.branchInfo, spreadBooks)
+    const normalizedBranchInfo = mergeBranchInfoFromBooks(
+      raw.branchInfo,
+      spreadBooks.map((b) => ({
+        id: b.id,
+        branch: b.branch,
+        requiresChoice: b.requiresChoice,
+        title: b.title,
+      })),
+      { topicHint: (raw.title || '').trim() || undefined }
+    )
 
     return {
       id: raw.id || `generated-${Date.now()}`,

@@ -229,7 +229,9 @@ function sanitizeRoadmap(roadmap: RoadmapResponse['roadmap']): RoadmapResponse['
   const inferredTrackIds = Array.from(
     new Set(cappedNodes.map((node) => node.branch).filter(Boolean))
   ) as string[]
-  const normalizedBranchInfo = mergeBranchInfoFromBooks(roadmap.branchInfo, cappedNodes)
+  const normalizedBranchInfo = mergeBranchInfoFromBooks(roadmap.branchInfo, cappedNodes, {
+    topicHint: (roadmap.title || '').trim() || undefined,
+  })
 
   const normalizedRecommendedItems = Array.isArray(roadmap.recommendedItems)
     ? roadmap.recommendedItems
@@ -331,7 +333,7 @@ function buildFallbackRoadmap(prompt: string): RoadmapResponse {
 
 async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: boolean) {
   const retryHint = isRetry
-    ? '\n중요: 이전 결과 품질이 낮았습니다. 반드시 더 유명하고 검증 가능한 실존 도서를 선택하세요.'
+    ? '\n중요: 이전 결과 품질이 낮았습니다. 반드시 더 유명하고 검증 가능한 실존 도서를 선택하고, 논문집·학위논문·연구자 전용 간행물은 제외하며 교보문고/알라딘 매대에 있는 단행본 위주로 다시 구성하세요.'
     : ''
 
   const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -351,9 +353,10 @@ async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: 
               type: 'text',
               text: [
                 'You are an expert curriculum architect for Korean learners.',
-                'Generate a hierarchical reading roadmap using ONLY real books that are sold in major Korean bookstores (Kyobo, Aladin, Yes24).',
+                'Generate a hierarchical reading roadmap using ONLY real trade books that ordinary readers buy at major Korean bookstores and online shops (Kyobo, Aladin, Yes24, Coupang Books).',
+                'Every node must be a commercial single-volume book (단행본) or boxed set sold to the general public — NOT PhD dissertations, thesis volumes, university press monographs aimed only at researchers, journal special issues, conference proceedings, preprint-only titles, or internal reports.',
                 'Never invent book titles, authors, editions, or ISBN-like data.',
-                'Prefer books with high public availability and stable reputation; when uncertain, choose mainstream classics over niche books.',
+                'Prefer nationally recognizable bestsellers, steady sellers, and mainstream translated classics that always appear in store charts; when uncertain, choose a famous alternative over an academic-only title.',
                 'Use Korean originals or officially translated Korean editions only.',
                 'If a Korean edition exists, output Korean title/author notation.',
                 'The learning order must strictly follow: foundation -> principles -> application -> advanced.',
@@ -363,7 +366,8 @@ async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: 
                 'Build a branch-based skill tree with an early common trunk and then 1 to 3 tracks (A/B/C).',
                 'Set roadmap.hasBranches=true and include roadmap.branchInfo.branchPoint + tracks.',
                 'tracks must be [{id,name,description}] with ids A/B/C (subset if fewer tracks).',
-                'Each track MUST have a unique Korean name (short label) and a Korean description of at least 40 characters explaining learning goals on that track for THIS roadmap topic; descriptions must differ across tracks and align with the books you assign to that track id.',
+                'Each track MUST have a unique Korean name (short label) and a Korean description of at least 40 characters explaining learning goals on that track for THIS roadmap topic; descriptions must differ across tracks and explicitly mention the kinds of trade books on that track.',
+                'branchInfo.tracks[].description must never be empty, never a duplicate of name only, and never a generic placeholder like "A path".',
                 'Every post-branch node with branch set must use branch id exactly matching one of branchInfo.tracks[].id.',
                 'Set requiresChoice=true on branch point node. Set branch field on each branch node.',
                 'After the branch point, use at most 2 books per track so total nodes stay within 6-9.',
@@ -386,7 +390,8 @@ async function requestRoadmapCandidate(apiKey: string, prompt: string, isRetry: 
               text: [
                 `주제: ${prompt}`,
                 '노드(도서) 개수는 반드시 6개 이상 9개 이하여야 한다. 10개 이상 절대 금지.',
-                '한국 독자가 실제로 구할 수 있는 실존 도서만 포함해줘. (교보문고/알라딘/예스24 기준)',
+                '한국 독자가 교보문고·알라딘·예스24·쿠팡북스 등에서 바로 검색해 살 수 있는 일반 독자용 단행본만 넣어줘.',
+                '논문집, 학위논문, 학술지 특집호, 학회 프로시딩, 연구소 보고서, 대학교 출판부의 연구자 전용 단행본처럼 서점 일반 매대에 잘 안 올라오는 것은 절대 넣지 마.',
                 '한국어 원서 또는 한국어 번역본만 사용하고, 제목은 한국어 표기로 써줘.',
                 'OpenLibrary 같은 글로벌 카탈로그에서 검색될 가능성이 높은 초유명/대표 베스트셀러 위주로 골라줘.',
                 '난이도 흐름은 반드시 기초 -> 원리 -> 응용 -> 심화 순서로 구성하고, 이전 단계가 다음 단계의 선수학습이 되게 해줘.',
