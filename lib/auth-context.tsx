@@ -130,6 +130,21 @@ function sanitizeContactEmail(raw: string): string {
   return raw.trim().toLowerCase()
 }
 
+/** Supabase 기본 SMTP 한도 등으로 나오는 문구를 사용자에게 풀어 설명 */
+function humanizeSignupError(message: string | undefined): string {
+  if (!message) return '회원가입에 실패했습니다.'
+  const m = message.toLowerCase()
+  if (
+    m.includes('email rate limit') ||
+    m.includes('rate limit exceeded') ||
+    m.includes('too many emails sent') ||
+    (m.includes('rate limit') && (m.includes('email') || m.includes('smtp')))
+  ) {
+    return '이메일 발송 한도에 걸렸습니다. 이 앱은 가입 확인 메일 수신 주소가 아닌 형식의 계정이라, Supabase Dashboard → Authentication → Providers → Email에서 「Confirm email(이메일로 가입 확인)」을 끄면 대부분 해결됩니다. 잠시 후 다시 시도할 수도 있습니다.'
+  }
+  return message
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -243,7 +258,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       })
       if (error || !data.user) {
-        return { success: false, error: error?.message || '회원가입에 실패했습니다.' }
+        return {
+          success: false,
+          error: humanizeSignupError(error?.message),
+        }
       }
       setUser(mapSupabaseUser(data.user))
       return { success: true }
