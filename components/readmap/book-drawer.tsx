@@ -254,9 +254,11 @@ export function BookDrawer({ book, onClose, onMarkComplete, onUpdateWhyRead }: B
                 <div className="flex items-center gap-3">
                   <StarRating rating={book.rating} />
                   <span className="text-lg font-bold text-foreground">{book.rating}</span>
-                  <span className="text-sm text-muted-foreground">
-                    ({book.reviewCount.toLocaleString()}개 리뷰)
-                  </span>
+                  {book.reviewCount > 0 && (
+                    <span className="text-sm text-muted-foreground">
+                      ({book.reviewCount.toLocaleString()}개 리뷰)
+                    </span>
+                  )}
                 </div>
               </div>
 
