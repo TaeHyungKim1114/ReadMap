@@ -7,6 +7,9 @@ import { Lock, CheckCircle2, Clock, GitBranch, X, Plus, Save, Sparkles } from 'l
 import { Button } from '@/components/ui/button'
 import confetti from 'canvas-confetti'
 
+/** Edge anchors and canvas bounds; keep in sync with BookNode visual layout */
+const BOOK_NODE_METRICS = { width: 72, height: 122 }
+
 interface RoadmapCanvasProps {
   books: Book[]
   roadmap: Roadmap
@@ -47,6 +50,7 @@ function BookNode({
   onDelete,
   onMarkComplete,
   trackColor,
+  trackDisplay,
 }: {
   book: Book
   onClick: () => void
@@ -57,6 +61,8 @@ function BookNode({
   onDelete?: () => void
   onMarkComplete?: () => void
   trackColor?: string
+  /** e.g. "A · 기술 심화" — shown inside the card to avoid overlapping neighbor nodes */
+  trackDisplay?: string | null
 }) {
   const statusStyles: Record<BookStatus, string> = {
     completed: 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(52,211,153,0.4)]',
@@ -158,17 +164,6 @@ function BookNode({
           </div>
         )}
 
-        {/* Branch indicator - outside overflow container */}
-        {book.branch && !isEditable && (
-          <div
-            className="absolute -left-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card text-[9px] font-bold text-white"
-            style={{ backgroundColor: trackColor ?? '#3b82f6' }}
-          >
-            {book.branch}
-          </div>
-        )}
-
-        {/* Step number badge for completed books */}
         {book.status === 'completed' && (
           <motion.div
             initial={{ scale: 0 }}
@@ -179,8 +174,18 @@ function BookNode({
           </motion.div>
         )}
       </div>
-      
-      <p className="mt-1 max-w-14 text-center text-[8px] font-medium text-foreground line-clamp-2">
+
+      {book.branch && trackDisplay ? (
+        <p
+          className="mt-0.5 max-w-14 text-center text-[7px] font-semibold leading-tight text-foreground/90 line-clamp-2"
+          style={trackColor ? { color: trackColor } : undefined}
+          title={trackDisplay}
+        >
+          {trackDisplay}
+        </p>
+      ) : null}
+
+      <p className="mt-0.5 max-w-14 text-center text-[8px] font-medium text-foreground line-clamp-2">
         {book.author}
       </p>
 
@@ -240,9 +245,9 @@ function ConnectionLine({
   isInSelectedBranch: boolean
   isCompleted?: boolean
 }) {
-  // 가로 레이아웃 기준 - 노드 크기 조정
-  const nodeWidth = 72 // w-14 (56px) + padding
-  const nodeHeight = 104 // h-20 (80px) + padding + text
+  // 가로 레이아웃 기준 - 노드 크기 조정 (BOOK_NODE_METRICS와 동일)
+  const nodeWidth = BOOK_NODE_METRICS.width
+  const nodeHeight = BOOK_NODE_METRICS.height
 
   const fromX = from.x + nodeWidth / 2
   const fromY = from.y + nodeHeight / 2
@@ -328,26 +333,33 @@ function BranchSelector({
           const color = trackColors[index % trackColors.length]
           const isActive = selectedBranch === track.id
           return (
-            <button
-              key={track.id}
-              onClick={() => onSelect(track.id)}
-              className="flex items-center gap-2 rounded-lg border-2 px-3 py-2 text-left transition-all"
-              style={{
-                borderColor: isActive ? color : undefined,
-                backgroundColor: isActive ? `${color}20` : undefined,
-              }}
-            >
-              <div
-                className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white"
-                style={{ backgroundColor: color }}
+            <div key={track.id} className="max-w-[14rem]">
+              <button
+                type="button"
+                onClick={() => onSelect(track.id)}
+                className="flex w-full min-w-0 items-start gap-2 rounded-lg border-2 px-3 py-2 text-left transition-all"
+                style={{
+                  borderColor: isActive ? color : undefined,
+                  backgroundColor: isActive ? `${color}20` : undefined,
+                }}
               >
-                {track.id}
-              </div>
-              <div>
-                <p className="text-xs font-medium text-foreground">{track.name}</p>
-                <p className="text-[10px] text-muted-foreground">{track.description}</p>
-              </div>
-            </button>
+                <div
+                  className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                  style={{ backgroundColor: color }}
+                >
+                  {track.id}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-foreground">{track.name}</p>
+                  <p
+                    className="mt-0.5 text-[10px] leading-snug text-muted-foreground line-clamp-3"
+                    title={track.description}
+                  >
+                    {track.description}
+                  </p>
+                </div>
+              </button>
+            </div>
           )
         })}
       </div>
@@ -368,8 +380,8 @@ export function RoadmapCanvas({
   onSave,
   onMarkComplete,
 }: RoadmapCanvasProps) {
-  const nodeWidth = 72
-  const nodeHeight = 104
+  const nodeWidth = BOOK_NODE_METRICS.width
+  const nodeHeight = BOOK_NODE_METRICS.height
   const canvasPadding = 40
   const trackIds = roadmap.branchInfo?.tracks?.map((track) => track.id) ?? []
   const trackColorPalette = ['#3b82f6', '#a855f7', '#14b8a6', '#f59e0b']
@@ -548,6 +560,15 @@ export function RoadmapCanvas({
         <AnimatePresence>
           {positionedBooks.map((book, index) => {
             const isInSelectedBranch = !book.branch || book.branch === selectedBranch || !selectedBranch
+            const trackMeta = book.branch
+              ? roadmap.branchInfo?.tracks?.find((t) => t.id === book.branch)
+              : undefined
+            const trackDisplay = book.branch
+              ? trackMeta
+                ? `${book.branch} · ${trackMeta.name}`
+                : book.branch
+              : null
+
             return (
               <BookNode
                 key={book.id}
@@ -560,6 +581,7 @@ export function RoadmapCanvas({
                 onDelete={onDeleteBook ? () => onDeleteBook(book.id) : undefined}
                 onMarkComplete={onMarkComplete && book.status === 'in-progress' ? () => onMarkComplete(book) : undefined}
                 trackColor={book.branch ? trackColorById.get(book.branch) : undefined}
+                trackDisplay={trackDisplay}
               />
             )
           })}
@@ -595,12 +617,18 @@ export function RoadmapCanvas({
               <>
                 <div className="h-3 w-px bg-border" />
                 {roadmap.branchInfo?.tracks.map((track) => (
-                  <div key={track.id} className="flex items-center gap-1.5 text-[10px]">
+                  <div
+                    key={track.id}
+                    className="flex max-w-[7.5rem] items-center gap-1 text-[10px]"
+                    title={`${track.name}: ${track.description}`}
+                  >
                     <div
-                      className="h-2 w-2 rounded-full"
+                      className="h-2 w-2 shrink-0 rounded-full"
                       style={{ backgroundColor: trackColorById.get(track.id) ?? '#64748b' }}
                     />
-                    <span className="text-muted-foreground">{track.id}</span>
+                    <span className="truncate text-muted-foreground">
+                      {track.id}·{track.name}
+                    </span>
                   </div>
                 ))}
               </>

@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Edit3, ExternalLink, Save, ShoppingCart } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { createCoupangSearchUrl } from '@/lib/book-data'
+import { mergeBranchInfoFromBooks } from '@/lib/branch-info'
 
 type ViewMode = 'roadmap' | 'community' | 'select-roadmap' | 'my-library' | 'settings'
 type APINode = {
@@ -402,20 +403,7 @@ function MainApp() {
       new Set(spreadBooks.map((book) => book.branch).filter(Boolean))
     ) as string[]
     const hasBranchTracks = inferredTrackIds.length > 0
-    const inferredBranchPoint =
-      spreadBooks.find((book) => book.requiresChoice)?.id ?? spreadBooks[0]?.id ?? ''
-    const normalizedBranchInfo = raw.branchInfo?.tracks?.length
-      ? raw.branchInfo
-      : hasBranchTracks
-      ? {
-          branchPoint: inferredBranchPoint,
-          tracks: inferredTrackIds.map((id) => ({
-            id,
-            name: `${id} 트랙`,
-            description: `${id} 경로`,
-          })),
-        }
-      : undefined
+    const normalizedBranchInfo = mergeBranchInfoFromBooks(raw.branchInfo, spreadBooks)
 
     return {
       id: raw.id || `generated-${Date.now()}`,
