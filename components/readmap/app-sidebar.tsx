@@ -1,6 +1,7 @@
 'use client'
 
-import { Map, Library, Users, Settings, BookOpen, TrendingUp } from 'lucide-react'
+import { Map, Library, Users, Settings, BookOpen, TrendingUp, Instagram } from 'lucide-react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -68,6 +69,21 @@ export function AppSidebar({
           )
         })}
       </nav>
+
+      {/* Instagram Carousel Link */}
+      <Link href="/instagram" className="mx-4 mb-2">
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="flex items-center gap-3 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-amber-500/10 px-4 py-3 transition-all hover:border-primary/50"
+        >
+          <Instagram className="h-5 w-5 text-primary" />
+          <div className="min-w-0 flex-1">
+            <span className="text-sm font-medium text-foreground">Instagram 카드</span>
+            <p className="truncate text-xs text-muted-foreground">로드맵 공유하기</p>
+          </div>
+        </motion.div>
+      </Link>
 
       {/* Stats Card */}
       <div className="m-4 rounded-xl border border-border bg-secondary/50 p-4">
