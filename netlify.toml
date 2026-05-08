@@ -1,6 +1,11 @@
 [build]
   # Next 16 기본값은 Turbopack이라 webpack으로 고정
   command = "npm run build"
+  # plugin-nextjs의 base==publish 검사 회피: 루트가 아닌, 빌드 후 항상 존재하는 경로
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
 [build.environment]
   NODE_VERSION = "22"
