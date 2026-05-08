@@ -1,16 +1,6 @@
-# Publish directory 절대 루트(.) 또는 비우지 않고 "/" 로 두면 실패함:
-#   "Your publish directory cannot be the same as the base directory"
-# 해결: Netlify UI → Site configuration → Builds → Build settings → Publish directory 를 비움.
-# 출력 경로는 @netlify/plugin-nextjs 가 처리함.
-
 [build]
-  base = "."
-  # Next 16 기본값은 Turbopack 빌드라 @netlify/plugin-nextjs와 충돌할 수 있어 webpack 사용
+  # Next 16 기본값은 Turbopack이라 webpack으로 고정
   command = "npm run build"
-
-# Next.js(App Router + /app/api) 공식 런타임 — https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
 
 [build.environment]
   NODE_VERSION = "22"
